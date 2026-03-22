@@ -64,6 +64,7 @@ const shareBtn = document.getElementById('share-btn');
 const shareIndicator = document.getElementById('share-indicator');
 const minimizedTrayContainer = document.getElementById('minimized-tray-container');
 const minimizedRow = document.getElementById('minimized-row');
+const checkAllReadyBtn = document.getElementById('check-all-ready-btn');
 
 // --- Initialization ---
 async function init() {
@@ -285,7 +286,7 @@ function renderSessions() {
   const visibleIds = state.displayOrder.slice(0, 6);
   const minimizedIds = state.displayOrder.slice(6);
 
-  // Clear container before rendering (or remove empty state)
+  // Remove empty-state if it exists
   const emptyState = sessionsContainer.querySelector('#empty-state');
   if (emptyState) emptyState.remove();
 
@@ -369,14 +370,17 @@ function renderSessions() {
       if (!tab) return;
       
       const itemEl = document.createElement('div');
-      // Red border, Title, Close - matching the bold "red box" request
-      itemEl.className = 'minimized-item flex-shrink-0 flex items-center justify-between gap-3 px-4 py-1.5 bg-white dark:bg-gray-950 rounded-lg shadow-sm cursor-pointer min-w-[120px]';
+      // Red border removed, match premium gray/indigo theme
+      itemEl.className = 'minimized-item flex-shrink-0 flex items-center justify-between gap-3 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm cursor-pointer w-[200px] h-[48px]';
       itemEl.onclick = (e) => {
         if (!e.target.closest('button')) expandMember(id);
       };
       itemEl.innerHTML = `
-        <span class="text-[12px] font-black text-gray-800 dark:text-gray-100 uppercase tracking-widest truncate max-w-[100px]">${tab.name}</span>
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-2 truncate flex-1">
+          <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">${tab.name}</span>
+        </div>
+        <div class="flex items-center gap-1.5 border-l border-gray-200 dark:border-gray-700 pl-2">
           <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-6 h-6 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Close Session">
             <i data-lucide="x" class="w-4 h-4 text-red-600 dark:text-red-400 group-hover:text-white"></i>
           </button>
@@ -921,6 +925,22 @@ function toggleMember(id) {
   render();
 }
 
+function checkAllReady() {
+  const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
+  
+  readyTabIds.forEach(id => {
+    if (!state.activeMembers.includes(id)) {
+      state.activeMembers.push(id);
+      if (!state.displayOrder.includes(id)) {
+        state.displayOrder.push(id);
+      }
+    }
+  });
+
+  saveState();
+  render();
+}
+
 function minimizeMember(id) {
   // Move to end of displayOrder (which effectively minimizes it if there are >6)
   state.displayOrder = state.displayOrder.filter(m => m !== id);
@@ -1068,6 +1088,10 @@ function setupEventListeners() {
       scanTabsBtn.classList.remove('scanning');
       scanTabsBtn.disabled = false;
     };
+  }
+
+  if (checkAllReadyBtn) {
+    checkAllReadyBtn.onclick = checkAllReady;
   }
 
   // Share button — open web UI in new tab
