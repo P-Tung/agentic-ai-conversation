@@ -34,6 +34,19 @@
       .dark .btn-red:hover { background:rgba(239,68,68,0.25); }
       @keyframes spin-cw { to { transform: rotate(360deg); } }
       .scanning svg { animation: spin-cw 0.7s linear infinite; }
+
+      /* Premium Minimized Tray Styling */
+      .minimized-item {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid rgba(239, 68, 68, 0.7);
+      }
+      .minimized-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     <script src="lucide.min.js"></script>
   </head>
@@ -149,6 +162,11 @@
           </div>
         </header>
 
+        <!-- Minimized Area (AI 7, AI 8...) -->
+        <div id="minimized-row" class="px-4 pt-3 flex items-center gap-4 hidden overflow-x-auto no-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
+          <div id="minimized-tray-container" class="flex items-center gap-3"></div>
+        </div>
+
         <!-- Sessions Grid -->
         <div id="sessions-container" class="flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500">
           <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
@@ -196,6 +214,7 @@
       mode: 'council',
       tabs: INITIAL_TABS,
       activeMembers: [],
+      displayOrder: [], // Dictates UI positions (up to 6 visible, others minimized)
       messages: [],
       config: { responseTimeout: 30 },
       sidebarOpen: true,
@@ -213,6 +232,8 @@
     const chatInput = document.getElementById('chat-input');
     const chatForm = document.getElementById('chat-form');
     const sendButton = document.getElementById('send-button');
+    const minimizedRow = document.getElementById('minimized-row');
+    const minimizedTray = document.getElementById('minimized-tray-container');
     const toggleThemeBtn = document.getElementById('toggle-theme');
     const themeIcon = document.getElementById('theme-icon');
     const clearChatBtn = document.getElementById('clear-chat');
@@ -360,6 +381,12 @@
         const origCount = state.activeMembers.length;
         state.activeMembers = state.activeMembers.filter(id => state.tabs.find(t => t.id === id)?.connected);
         
+        // Sync displayOrder
+        state.displayOrder = state.displayOrder.filter(id => state.activeMembers.includes(id));
+        state.activeMembers.forEach(id => {
+          if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
+        });
+
         renderTabs();
         
         // Re-render sessions only if active members changed
@@ -431,32 +458,123 @@
     }
 
     function renderSessions() {
+      // 1. Sync displayOrder with activeMembers
+      state.displayOrder = state.displayOrder.filter(id => state.activeMembers.includes(id));
+      state.activeMembers.forEach(id => {
+        if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
+      });
+
       const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
       const count = activeTabs.length;
+
+      // Handle empty state
       if (count === 0) {
-        sessionsContainer.innerHTML = `<div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none"><div class="w-14 h-14 rounded-2xl flex items-center justify-center"><i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i></div><div class="space-y-1"><p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p><p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p></div></div>`;
-        lucide.createIcons(); return;
+        sessionsContainer.innerHTML = `
+          <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
+            </div>
+            <div class="space-y-1">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p>
+            </div>
+          </div>`;
+        minimizedRow.classList.add('hidden');
+        lucide.createIcons();
+        return;
       }
-      const emptyState = sessionsContainer.querySelector('#empty-state');
-      if (emptyState) emptyState.remove();
-      sessionsContainer.className = '';
-      sessionsContainer.classList.add('flex-1','overflow-hidden','p-3','sm:p-4','grid','gap-4','bg-gray-50/50','dark:bg-gray-950/50','transition-all','duration-500',`sessions-grid-${Math.min(count,6)}`);
-      const existingWindows = Array.from(sessionsContainer.querySelectorAll('.session-window'));
-      const activeIds = activeTabs.map(t => t.id);
-      existingWindows.forEach(w => { if (!activeIds.includes(w.dataset.id)) w.remove(); });
-      activeTabs.slice(0,6).forEach(tab => {
-        let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${tab.id}"]`);
+
+      // 2. Identify Visible vs Minimized
+      const visibleIds = state.displayOrder.slice(0, 6);
+      const minimizedIds = state.displayOrder.slice(6);
+
+      // 3. Render Minimized Tray
+      if (minimizedIds.length > 0) {
+        minimizedRow.classList.remove('hidden');
+        minimizedTray.innerHTML = '';
+        minimizedIds.forEach(mid => {
+          const tab = state.tabs.find(t => t.id === mid);
+          if (!tab) return;
+          const mItem = document.createElement('div');
+          mItem.className = 'minimized-item flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm cursor-pointer select-none';
+          mItem.innerHTML = `
+            <img src="${tab.iconSrc}" class="w-3.5 h-3.5 object-contain">
+            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">${tab.name}</span>
+            <div class="flex items-center gap-1 ml-1 border-l border-gray-200 dark:border-gray-700 pl-1">
+              <button onclick="expandMember('${mid}'); event.stopPropagation();" class="p-0.5 hover:text-indigo-500 transition-colors" title="Expand">
+                <i data-lucide="maximize-2" class="w-3 h-3"></i>
+              </button>
+              <button onclick="toggleMember('${mid}'); event.stopPropagation();" class="p-0.5 hover:text-red-500 transition-colors text-gray-400" title="Close">
+                <i data-lucide="x" class="w-3 h-3"></i>
+              </button>
+            </div>
+          `;
+          mItem.onclick = () => expandMember(mid);
+          minimizedTray.appendChild(mItem);
+        });
+      } else {
+        minimizedRow.classList.add('hidden');
+      }
+
+      // 4. Render Grid Visible Sessions
+      const gridCount = visibleIds.length;
+      sessionsContainer.className = `flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500 sessions-grid-${gridCount}`;
+      
+      // Clean up orphaned windows
+      Array.from(sessionsContainer.querySelectorAll('.session-window')).forEach(w => {
+        if (!visibleIds.includes(w.dataset.id)) w.remove();
+      });
+
+      visibleIds.forEach(id => {
+        const tab = state.tabs.find(t => t.id === id);
+        if (!tab) return;
+
+        let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${id}"]`);
         if (!windowEl) {
           windowEl = document.createElement('div');
           windowEl.className = 'session-window';
-          windowEl.dataset.id = tab.id;
-          windowEl.innerHTML = `<div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50"><div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><img src="${tab.iconSrc}" class="w-4 h-4 object-contain"></div><span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span><div class="ml-auto flex items-center gap-3"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span><span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Not Ready'}</span></div><button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div></div><div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
+          windowEl.dataset.id = id;
+          windowEl.innerHTML = `
+            <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50">
+              <div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+                <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
+              </div>
+              <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
+              <div class="ml-auto flex items-center gap-2">
+                <div class="flex items-center gap-1.5 mr-2">
+                  <span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+                  <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Offline'}</span>
+                </div>
+                <!-- Action Buttons -->
+                <button onclick="minimizeMember('${id}'); event.stopPropagation();" class="w-6 h-6 rounded-md flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all shadow-sm" title="Minimize">
+                  <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-6 h-6 rounded-md flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-red-500/20" title="Close Session">
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
           sessionsContainer.appendChild(windowEl);
         }
+        
+        // Reorder if necessary manually inserting to match displayOrder
+        const indexInVisible = visibleIds.indexOf(id);
+        if (sessionsContainer.children[indexInVisible] !== windowEl) {
+          sessionsContainer.insertBefore(windowEl, sessionsContainer.children[indexInVisible]);
+        }
+
         if (tab.connected) {
           renderMessagesForSession(tab.id, tab.name, windowEl.querySelector('.chat-messages'));
         } else {
-          windowEl.querySelector('.chat-messages').innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center p-6 gap-3"><div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i></div><p class="text-xs font-medium text-gray-500">This AI tab is not open or ready.</p><button class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); if(!state.activeMembers.includes('${tab.id}')) toggleMember('${tab.id}'); event.stopPropagation();">Open ${tab.name}</button></div>`;
+          windowEl.querySelector('.chat-messages').innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-center p-6 gap-3">
+              <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
+              </div>
+              <p class="text-xs font-medium text-gray-500">This AI tab is not open or ready.</p>
+              <button class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}');">Open ${tab.name}</button>
+            </div>`;
         }
       });
       lucide.createIcons();
@@ -542,12 +660,36 @@
 
     // --- Actions ---
     function toggleMember(id) {
-      if (state.activeMembers.includes(id)) state.activeMembers = state.activeMembers.filter(m => m !== id);
-      else state.activeMembers.push(id);
+      if (state.activeMembers.includes(id)) {
+        state.activeMembers = state.activeMembers.filter(m => m !== id);
+        state.displayOrder = state.displayOrder.filter(m => m !== id);
+      } else {
+        state.activeMembers.push(id);
+        if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
+      }
       renderTabs();
       renderSessions();
       saveState();
       chatInput.oninput && chatInput.oninput();
+    }
+
+    function minimizeMember(id) {
+      state.displayOrder = state.displayOrder.filter(m => m !== id);
+      state.displayOrder.push(id);
+      renderSessions();
+      saveState();
+    }
+
+    function expandMember(id) {
+      const idx = state.displayOrder.indexOf(id);
+      if (idx > 5) {
+        // Swap with the 6th visible slot (index 5)
+        const targetId = state.displayOrder[5];
+        state.displayOrder[idx] = targetId;
+        state.displayOrder[5] = id;
+      }
+      renderSessions();
+      saveState();
     }
 
     function handleStop() {
@@ -597,10 +739,11 @@
     }
 
       function saveState() {
-        if (state.extensionAvailable && typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.set({ ai_council_state: {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.set({ ai_workspace_state: {
             mode: state.mode,
             activeMembers: state.activeMembers,
+            displayOrder: state.displayOrder,
             theme: state.theme,
             config: state.config
           }});
@@ -612,11 +755,12 @@
       // Restore state if available
       if (typeof chrome !== 'undefined' && chrome.storage) {
         try {
-          const result = await new Promise(r => chrome.storage.local.get(['ai_council_state'], r));
-          if (result && result.ai_council_state) {
-            const saved = result.ai_council_state;
+          const result = await new Promise(r => chrome.storage.local.get(['ai_workspace_state'], r));
+          if (result && result.ai_workspace_state) {
+            const saved = result.ai_workspace_state;
             if (saved.mode) state.mode = saved.mode;
             if (saved.activeMembers) state.activeMembers = saved.activeMembers;
+            if (saved.displayOrder) state.displayOrder = saved.displayOrder;
             if (saved.theme) state.theme = saved.theme;
             if (saved.config) state.config = { ...state.config, ...saved.config };
           }

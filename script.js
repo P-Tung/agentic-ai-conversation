@@ -7,7 +7,9 @@ let state = {
   status: 'idle', // 'idle' | 'running' | 'paused'
   mode: 'council', // 'council' | 'debate'
   tabs: INITIAL_TABS,
-  activeMembers: ['chatgpt', 'claude'],
+  activeMembers: [], // Initially empty, will be loaded from storage
+  // Order of members for display (handles which 6 are shown)
+  displayOrder: [], 
   messages: [
     {
       id: 'sys-1',
@@ -60,6 +62,8 @@ const debateConfigSection = document.getElementById('debate-config-section');
 const debateRoundsConfig = document.getElementById('debate-rounds-config');
 const shareBtn = document.getElementById('share-btn');
 const shareIndicator = document.getElementById('share-indicator');
+const minimizedTrayContainer = document.getElementById('minimized-tray-container');
+const minimizedRow = document.getElementById('minimized-row');
 
 // --- Initialization ---
 async function init() {
@@ -69,7 +73,8 @@ async function init() {
     if (data.ai_workspace_state) {
       const savedState = data.ai_workspace_state;
       state.theme = savedState.theme || state.theme;
-      state.activeMembers = savedState.activeMembers || state.activeMembers;
+      state.activeMembers = savedState.activeMembers || [];
+      state.displayOrder = savedState.displayOrder || [];
       state.config = { ...state.config, ...savedState.config };
       // Convert saved timestamps back to Date objects
       state.messages = (savedState.messages || state.messages).map(m => ({
@@ -88,10 +93,9 @@ async function init() {
   updateTheme();
   updateSidebarUI();
   await scanTabs();
-  render();
   setupEventListeners();
-  
-  // Initial icons
+  // Final render with correct state
+  render();
   refreshIcons();
 }
 
@@ -163,6 +167,7 @@ function render() {
   updateSidebarUI();
   updateDebateConfigVisibility();
   updateResponseTimeoutVisibility();
+  renderTooltips();
 }
 
 function renderTabs() {
@@ -235,6 +240,13 @@ function renderTabs() {
   });
   
   refreshIcons();
+  renderTooltips();
+}
+
+function renderTooltips() {
+  // Simple check to ensure we don't overkill
+  const tooltips = document.querySelectorAll('[title]');
+  // Native tooltips are fine, but for premium feel we can style them or just leave as is since we are using Lucide
 }
 
 function renderSessions() {
@@ -261,47 +273,65 @@ function renderSessions() {
     return;
   }
 
+  // Logic for display order: ensure activeMembers are in displayOrder
+  state.activeMembers.forEach(id => {
+    if (!state.displayOrder.includes(id)) {
+      state.displayOrder.push(id);
+    }
+  });
+  // Remove those not in activeMembers anymore
+  state.displayOrder = state.displayOrder.filter(id => state.activeMembers.includes(id));
+
+  const visibleIds = state.displayOrder.slice(0, 6);
+  const minimizedIds = state.displayOrder.slice(6);
+
   // Clear container before rendering (or remove empty state)
   const emptyState = sessionsContainer.querySelector('#empty-state');
   if (emptyState) emptyState.remove();
 
   // Update container grid class
+  const visibleCount = visibleIds.length;
   sessionsContainer.className = '';
   sessionsContainer.classList.add(
     'flex-1', 'overflow-hidden', 'p-3', 'sm:p-4', 'grid', 'gap-4',
     'bg-gray-50/50', 'dark:bg-gray-950/50', 'transition-all', 'duration-500',
-    `sessions-grid-${Math.min(count, 6)}`
+    `sessions-grid-${Math.min(visibleCount, 6)}`
   );
   
   // Create or update session windows
   const existingWindows = Array.from(sessionsContainer.querySelectorAll('.session-window'));
-  const existingIds = existingWindows.map(w => w.dataset.id);
-  const activeIds = activeTabs.map(t => t.id);
-
-  // Remove inactive windows
+  
+  // Remove windows that shouldn't be visible
   existingWindows.forEach(w => {
-    if (!activeIds.includes(w.dataset.id)) w.remove();
+    if (!visibleIds.includes(w.dataset.id)) w.remove();
   });
 
-  activeTabs.slice(0, 6).forEach(tab => {
-    let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${tab.id}"]`);
+  // Re-sort or create windows in order
+  visibleIds.forEach((id, index) => {
+    const tab = state.tabs.find(t => t.id === id);
+    if (!tab) return;
+
+    let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${id}"]`);
     if (!windowEl) {
       windowEl = document.createElement('div');
       windowEl.className = 'session-window';
-      windowEl.dataset.id = tab.id;
+      windowEl.dataset.id = id;
       windowEl.innerHTML = `
-        <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50">
+        <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50 transition-all hover:bg-white/80 dark:hover:bg-gray-900/80">
           <div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center">
             <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
           </div>
-          <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
-          <div class="ml-auto flex items-center gap-3">
-            <div class="flex items-center gap-1.5">
+          <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300 truncate max-w-[120px]">${tab.name}</span>
+          <div class="ml-auto flex items-center gap-2">
+            <div class="flex items-center gap-1.5 mr-1">
               <span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>
               <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Not Ready'}</span>
             </div>
-            <button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session">
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            <button onclick="minimizeMember('${id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-90" title="Minimize Session">
+              <i data-lucide="minus" class="w-3 h-3"></i>
+            </button>
+            <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm active:scale-90" title="Close Session">
+              <i data-lucide="x" class="w-3 h-3"></i>
             </button>
           </div>
         </div>
@@ -310,6 +340,9 @@ function renderSessions() {
       sessionsContainer.appendChild(windowEl);
     }
     
+    // Maintain DOM order if needed (though grid handles it mostly)
+    windowEl.style.order = index;
+
     if (tab.connected) {
       renderMessagesForSession(tab.id, windowEl.querySelector('.chat-messages'));
     } else {
@@ -326,6 +359,34 @@ function renderSessions() {
       `;
     }
   });
+
+  // Render minimized tray in the dedicated row above the grid
+  minimizedTrayContainer.innerHTML = '';
+  if (minimizedIds.length > 0) {
+    minimizedRow.classList.remove('hidden');
+    minimizedIds.forEach(id => {
+      const tab = state.tabs.find(t => t.id === id);
+      if (!tab) return;
+      
+      const itemEl = document.createElement('div');
+      // Red border, Title, Close - matching the bold "red box" request
+      itemEl.className = 'minimized-item flex-shrink-0 flex items-center justify-between gap-3 px-4 py-1.5 bg-white dark:bg-gray-950 rounded-lg shadow-sm cursor-pointer min-w-[120px]';
+      itemEl.onclick = (e) => {
+        if (!e.target.closest('button')) expandMember(id);
+      };
+      itemEl.innerHTML = `
+        <span class="text-[12px] font-black text-gray-800 dark:text-gray-100 uppercase tracking-widest truncate max-w-[100px]">${tab.name}</span>
+        <div class="flex items-center gap-1.5">
+          <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-6 h-6 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Close Session">
+            <i data-lucide="x" class="w-4 h-4 text-red-600 dark:text-red-400 group-hover:text-white"></i>
+          </button>
+        </div>
+      `;
+      minimizedTrayContainer.appendChild(itemEl);
+    });
+  } else {
+    minimizedRow.classList.add('hidden');
+  }
 
   refreshIcons();
 }
@@ -569,8 +630,10 @@ async function scanTabs() {
     }
   }
 
-  // Remove members that are no longer connected
-  state.activeMembers = state.activeMembers.filter(id => state.tabs.find(t => t.id === id)?.connected);
+  // DO NOT filter activeMembers here!
+  // Filtering out 'Not Ready' tabs on reload causes them to disappear.
+  // We should keep them so they can be re-detected or manually re-opened.
+  // state.activeMembers = state.activeMembers.filter(id => state.tabs.find(t => t.id === id)?.connected);
 
   saveState();
   render();
@@ -847,11 +910,39 @@ async function runBroadcast(text, parentMsgId = null) {
 function toggleMember(id) {
   if (state.activeMembers.includes(id)) {
     state.activeMembers = state.activeMembers.filter(m => m !== id);
+    state.displayOrder = state.displayOrder.filter(m => m !== id);
   } else {
     state.activeMembers.push(id);
+    if (!state.displayOrder.includes(id)) {
+      state.displayOrder.push(id);
+    }
   }
   saveState();
   render();
+}
+
+function minimizeMember(id) {
+  // Move to end of displayOrder (which effectively minimizes it if there are >6)
+  state.displayOrder = state.displayOrder.filter(m => m !== id);
+  state.displayOrder.push(id);
+  saveState();
+  render();
+}
+
+function expandMember(id) {
+  const index = state.displayOrder.indexOf(id);
+  if (index >= 6) {
+    // Requirements: Replace the last (6th) chat box
+    // Index 5 is the 6th position
+    const sixthId = state.displayOrder[5];
+    
+    // Swap them in the displayOrder
+    state.displayOrder[index] = sixthId;
+    state.displayOrder[5] = id;
+
+    saveState();
+    render();
+  }
 }
 
 function setStatus(status) {
