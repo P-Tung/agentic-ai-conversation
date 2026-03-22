@@ -101,20 +101,22 @@
                 </label>
                 <input id="max-length-slider" type="range" min="50" max="2000" step="50" value="50" class="w-full accent-indigo-500">
               </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                  <span>Max Rounds</span>
-                  <span id="max-rounds-value" class="text-indigo-500 font-mono">7</span>
-                </label>
-                <input id="max-rounds-slider" type="range" min="1" max="100" step="1" value="7" class="w-full accent-indigo-500">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                  <span>Max Debate Turns</span>
-                  <span id="max-debate-turns-value" class="text-indigo-500 font-mono">5</span>
-                </label>
-                <input id="max-debate-turns-slider" type="range" min="1" max="100" step="1" value="5" class="w-full accent-indigo-500">
-                <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">AIs debate for this many turns, then switch to consensus mode.</p>
+              <div id="debate-rounds-config">
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
+                    <span>Max Rounds</span>
+                    <span id="max-rounds-value" class="text-indigo-500 font-mono">7</span>
+                  </label>
+                  <input id="max-rounds-slider" type="range" min="1" max="100" step="1" value="7" class="w-full accent-indigo-500">
+                </div>
+                <div class="mt-3">
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
+                    <span>Max Debate Turns</span>
+                    <span id="max-debate-turns-value" class="text-indigo-500 font-mono">5</span>
+                  </label>
+                  <input id="max-debate-turns-slider" type="range" min="1" max="100" step="1" value="5" class="w-full accent-indigo-500">
+                  <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">AIs debate for this many turns, then switch to consensus mode.</p>
+                </div>
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
@@ -124,13 +126,18 @@
                 <input id="response-timeout-slider" type="range" min="5" max="120" step="5" value="20" class="w-full accent-indigo-500">
                 <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Max seconds to wait for each AI response before timing out.</p>
               </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Debate Instruction</label>
-                <textarea id="debate-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none h-24 transition-shadow"></textarea>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Consensus Instruction</label>
-                <textarea id="consensus-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none h-24 transition-shadow"></textarea>
+              <div id="debate-config-section" class="hidden space-y-4">
+                <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
+                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Debate Settings</p>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Debate Instruction</label>
+                  <textarea id="debate-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none h-24 transition-shadow" placeholder="Instructions for debate mode..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Consensus Instruction</label>
+                  <textarea id="consensus-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none h-24 transition-shadow" placeholder="Instructions for consensus phase..."></textarea>
+                </div>
               </div>
             </div>
           </section>
@@ -149,6 +156,9 @@
             <button id="open-sidebar" class="hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
               <i data-lucide="panel-left-open" class="w-5 h-5"></i>
             </button>
+            
+            <!-- Mode Toggle -->
+            <div id="mode-toggle"></div>
             
             <!-- Controls -->
             <div id="controls-container" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
@@ -176,9 +186,22 @@
           </div>
         </header>
 
-        <!-- Chat History -->
-        <div id="chat-history" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-gray-50/50 dark:bg-gray-950/50">
-          <!-- Messages will be injected here -->
+        <!-- AI Sessions Grid -->
+        <div id="sessions-container" class="flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500">
+          <!-- Session windows will be dynamicially injected here -->
+          <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
+            </div>
+            <div class="space-y-1">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No active sessions</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[220px]">Select AI agents from the sidebar to start parallel conversations.</p>
+            </div>
+            <button class="howto-open-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+              <i data-lucide="circle-help" class="w-3.5 h-3.5"></i>
+              How to use
+            </button>
+          </div>
         </div>
 
         <!-- Input Area -->

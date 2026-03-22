@@ -5,6 +5,7 @@ const INITIAL_TABS = PLATFORMS.map(p => ({ id: p.id, name: p.name, iconSrc: p.ic
 let state = {
   theme: 'dark',
   status: 'idle', // 'idle' | 'running' | 'paused'
+  mode: 'council', // 'council' | 'debate'
   tabs: INITIAL_TABS,
   activeMembers: ['chatgpt', 'claude'],
   messages: [
@@ -25,7 +26,7 @@ let state = {
 };
 
 // --- DOM Elements ---
-const chatHistory = document.getElementById('chat-history');
+const sessionsContainer = document.getElementById('sessions-container');
 const tabsList = document.getElementById('tabs-list');
 const maxLengthSlider = document.getElementById('max-length-slider');
 const maxLengthValue = document.getElementById('max-length-value');
@@ -51,6 +52,9 @@ const howtoBtn = document.getElementById('howto-btn');
 const howtoClose = document.getElementById('howto-close');
 const howtoGotIt = document.getElementById('howto-got-it');
 const howtoOverlay = document.getElementById('howto-overlay');
+const modeToggleContainer = document.getElementById('mode-toggle');
+const debateConfigSection = document.getElementById('debate-config-section');
+const debateRoundsConfig = document.getElementById('debate-rounds-config');
 
 // --- Initialization ---
 async function init() {
@@ -145,10 +149,12 @@ function parseMarkdown(text) {
 // --- Render Logic ---
 function render() {
   renderTabs();
-  renderMessages();
+  renderSessions();
   renderControls();
+  renderModeToggle();
   updateStatusUI();
   updateSidebarUI();
+  updateDebateConfigVisibility();
 }
 
 function renderTabs() {
@@ -163,7 +169,7 @@ function renderTabs() {
   }
 
   state.tabs.forEach(tab => {
-    if (!tab.connected) return; // Only show connected tabs for now
+    if (!tab.connected) return;
     
     const isActive = state.activeMembers.includes(tab.id);
     const tabEl = document.createElement('div');
@@ -202,20 +208,19 @@ function renderTabs() {
   refreshIcons();
 }
 
-function renderMessages() {
-  chatHistory.innerHTML = '';
+function renderSessions() {
+  const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
+  const count = activeTabs.length;
 
-  // Show empty state when there are no human/AI messages yet
-  const hasConversation = state.messages.some(m => m.senderType === 'human' || m.senderType === 'ai');
-  if (!hasConversation) {
-    chatHistory.innerHTML = `
-      <div class="flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
+  if (count === 0) {
+    sessionsContainer.innerHTML = `
+      <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
         <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
           <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
         </div>
         <div class="space-y-1">
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No conversation yet</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[220px]">Select AI agents from the sidebar and send a message to begin a multi-AI discussion.</p>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No active sessions</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[220px]">Select AI agents from the sidebar to start parallel conversations.</p>
         </div>
         <button class="howto-open-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
           <i data-lucide="circle-help" class="w-3.5 h-3.5"></i>
@@ -227,58 +232,107 @@ function renderMessages() {
     return;
   }
 
-  state.messages.forEach(msg => {
+  // Clear container before rendering (or remove empty state)
+  const emptyState = sessionsContainer.querySelector('#empty-state');
+  if (emptyState) emptyState.remove();
+
+  // Update container grid class
+  sessionsContainer.className = '';
+  sessionsContainer.classList.add(
+    'flex-1', 'overflow-hidden', 'p-3', 'sm:p-4', 'grid', 'gap-4',
+    'bg-gray-50/50', 'dark:bg-gray-950/50', 'transition-all', 'duration-500',
+    `sessions-grid-${Math.min(count, 6)}`
+  );
+  
+  // Create or update session windows
+  const existingWindows = Array.from(sessionsContainer.querySelectorAll('.session-window'));
+  const existingIds = existingWindows.map(w => w.dataset.id);
+  const activeIds = activeTabs.map(t => t.id);
+
+  // Remove inactive windows
+  existingWindows.forEach(w => {
+    if (!activeIds.includes(w.dataset.id)) w.remove();
+  });
+
+  activeTabs.slice(0, 6).forEach(tab => {
+    let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${tab.id}"]`);
+    if (!windowEl) {
+      windowEl = document.createElement('div');
+      windowEl.className = 'session-window';
+      windowEl.dataset.id = tab.id;
+      windowEl.innerHTML = `
+        <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50">
+          <div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+            <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
+          </div>
+          <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
+          <div class="ml-auto flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span>
+          </div>
+        </div>
+        <div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>
+      `;
+      sessionsContainer.appendChild(windowEl);
+    }
+    
+    renderMessagesForSession(tab.id, windowEl.querySelector('.chat-messages'));
+  });
+
+  refreshIcons();
+}
+
+function renderMessagesForSession(memberId, container) {
+  const member = state.tabs.find(t => t.id === memberId);
+  if (!member) return;
+
+  // Council mode: Each session shows only user input + this AI's response
+  // (Not other AIs' responses)
+  const sessionMessages = state.messages.filter(m => {
+    if (m.senderType === 'human') return true; // Show all user inputs
+    if (m.senderType === 'ai' && m.sender === member.name) return true; // Show this AI's response only
+    return false;
+  });
+  
+  container.innerHTML = '';
+  sessionMessages.forEach(msg => {
     const isHuman = msg.senderType === 'human';
     const isSystem = msg.senderType === 'system';
-    const senderTab = state.tabs.find(t => t.name === msg.sender);
     
     if (isSystem) {
       const sysEl = document.createElement('div');
-      sysEl.className = "flex justify-center my-4";
+      sysEl.className = "flex justify-center my-3";
       sysEl.innerHTML = `
-        <div class="bg-gray-100 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 text-[11px] px-3 py-1 rounded-full font-medium border border-gray-200 dark:border-gray-700/50 text-center max-w-[80%]">
+        <div class="bg-gray-100/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-[10px] px-2.5 py-0.5 rounded-full font-medium border border-gray-200/50 dark:border-gray-700/30 text-center">
           ${msg.text}
         </div>
       `;
-      chatHistory.appendChild(sysEl);
+      container.appendChild(sysEl);
       return;
     }
 
     const msgEl = document.createElement('div');
-    msgEl.className = `flex gap-3 max-w-[90%] ${isHuman ? 'ml-auto flex-row-reverse' : 'mr-auto'}`;
+    msgEl.className = `flex gap-2.5 max-w-[95%] ${isHuman ? 'ml-auto flex-row-reverse' : 'mr-auto'}`;
     
-    const avatarInner = isHuman
-      ? '<i data-lucide="user" class="w-4 h-4"></i>'
-      : (senderTab?.iconSrc
-          ? `<img src="${senderTab.iconSrc}" alt="${msg.sender}" class="w-5 h-5 object-contain">`
-          : '<i data-lucide="bot-message-square" class="w-4 h-4"></i>');
-
-    const avatarClass = isHuman
-      ? 'bg-indigo-600 text-white'
-      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700';
-
     const bubbleContent = isHuman ? escHtml(msg.text) : parseMarkdown(msg.text);
+    const bubbleColor = isHuman 
+      ? 'bg-indigo-600 text-white rounded-tr-sm' 
+      : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm';
 
     msgEl.innerHTML = `
-      <div class="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1 ${avatarClass}">
-        ${avatarInner}
-      </div>
       <div class="flex flex-col ${isHuman ? 'items-end' : 'items-start'}">
-        <div class="flex items-baseline gap-1.5 mb-1 px-1">
-          <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${msg.sender}</span>
-          <span class="text-[9px] text-gray-400 dark:text-gray-500">${(() => { try { const d = new Date(msg.timestamp); return isNaN(d) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })()}</span>
+        <div class="flex items-baseline gap-1.5 mb-0.5 px-0.5">
+          <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">${isHuman ? 'You' : msg.sender}</span>
         </div>
-        <div class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${isHuman ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm'}">
+        <div class="px-3 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm ${bubbleColor}">
           ${bubbleContent}
         </div>
       </div>
     `;
-    chatHistory.appendChild(msgEl);
+    container.appendChild(msgEl);
   });
   
-  // Scroll to bottom
-  chatHistory.scrollTop = chatHistory.scrollHeight;
-  refreshIcons();
+  container.scrollTop = container.scrollHeight;
 }
 
 function renderControls() {
@@ -363,6 +417,49 @@ function updateTheme() {
     themeIcon.setAttribute('data-lucide', 'moon');
   }
   refreshIcons();
+}
+
+function renderModeToggle() {
+  modeToggleContainer.innerHTML = `
+    <div class="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+      <button id="council-mode-btn" class="mode-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+        state.mode === 'council'
+          ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+      }">
+        Council
+      </button>
+      <button id="debate-mode-btn" class="mode-btn px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+        state.mode === 'debate'
+          ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+      }">
+        Debate
+      </button>
+    </div>
+  `;
+  
+  document.getElementById('council-mode-btn').onclick = () => setMode('council');
+  document.getElementById('debate-mode-btn').onclick = () => setMode('debate');
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  saveState();
+  renderModeToggle();
+  updateDebateConfigVisibility();
+}
+
+function updateDebateConfigVisibility() {
+  const isDebateMode = state.mode === 'debate';
+  
+  if (debateConfigSection) {
+    debateConfigSection.classList.toggle('hidden', !isDebateMode);
+  }
+  
+  if (debateRoundsConfig) {
+    debateRoundsConfig.classList.toggle('hidden', !isDebateMode);
+  }
 }
 
 // --- Storage Logic ---
@@ -507,9 +604,17 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
 }
 
 // --- Orchestration Logic ---
+// TODO [Future]: Implement debate mode orchestration
+// - Council Mode (current): Broadcast same message to all AIs simultaneously
+// - Debate Mode (future): Sequential debate with turn-based responses
 async function runBroadcast(text) {
   if (state.activeMembers.length === 0) return;
 
+  // TODO [Future]: When state.mode === 'debate', implement debate orchestration
+  // - Send initial message to all AIs
+  // - Collect responses and feed back to AIs for counter-arguments
+  // - After max debate turns, switch to consensus phase
+  
   setStatus('running');
 
   const broadcastPromises = state.activeMembers.map(async (memberId) => {
@@ -683,8 +788,8 @@ function setupEventListeners() {
   howtoOverlay.onclick = closeHowTo;
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHowTo(); });
 
-  // Delegated clicks inside chat history (copy button + how-to button in empty state)
-  chatHistory.addEventListener('click', e => {
+  // Delegated clicks inside sessions container (copy button + how-to button in empty state)
+  sessionsContainer.addEventListener('click', e => {
     if (e.target.closest('.howto-open-btn')) { openHowTo(); return; }
     const btn = e.target.closest('.copy-btn');
     if (!btn) return;
