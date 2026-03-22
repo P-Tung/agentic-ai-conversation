@@ -17,12 +17,8 @@ let state = {
     }
   ],
   config: {
-    maxLength: 50,
-    maxRounds: 7,
-    maxDebateTurns: 5,
-    responseTimeout: 20,
-    debateInstruction: 'Act as a critical debater. Identify flaws and counter the following argument strictly concisely. Response in Vietnamese',
-    consensusInstruction: 'Stop debating. Synthesize the above arguments and provide the final unified solution strictly concisely. Response in Vietnamese',
+    maxLength: 1000,
+    responseTimeout: 30,
   },
   sidebarOpen: window.innerWidth > window.innerHeight,
   isLandscape: window.innerWidth > window.innerHeight
@@ -35,16 +31,10 @@ const maxLengthSlider = document.getElementById('max-length-slider');
 const maxLengthValue = document.getElementById('max-length-value');
 const scanTabsBtn = document.getElementById('scan-tabs-btn');
 const noTabsMsg = document.getElementById('no-tabs-msg');
-const maxRoundsSlider = document.getElementById('max-rounds-slider');
-const maxRoundsValue = document.getElementById('max-rounds-value');
-const maxDebateTurnsSlider = document.getElementById('max-debate-turns-slider');
-const maxDebateTurnsValue = document.getElementById('max-debate-turns-value');
 const responseTimeoutSlider = document.getElementById('response-timeout-slider');
 const responseTimeoutValue = document.getElementById('response-timeout-value');
-const debateInstructionInput = document.getElementById('debate-instruction');
-const consensusInstructionInput = document.getElementById('consensus-instruction');
-const controlsContainer = document.getElementById('controls-container');
 const statusPing = document.getElementById('status-ping');
+const controlsContainer = document.getElementById('controls-container');
 const statusDot = document.getElementById('status-dot');
 const chatInput = document.getElementById('chat-input');
 const chatForm = document.getElementById('chat-form');
@@ -83,14 +73,8 @@ async function init() {
   // Set initial values
   maxLengthSlider.value = state.config.maxLength;
   maxLengthValue.textContent = state.config.maxLength;
-  maxRoundsSlider.value = state.config.maxRounds;
-  maxRoundsValue.textContent = state.config.maxRounds;
-  maxDebateTurnsSlider.value = state.config.maxDebateTurns;
-  maxDebateTurnsValue.textContent = state.config.maxDebateTurns;
   responseTimeoutSlider.value = state.config.responseTimeout;
   responseTimeoutValue.textContent = state.config.responseTimeout;
-  debateInstructionInput.value = state.config.debateInstruction;
-  consensusInstructionInput.value = state.config.consensusInstruction;
   
   updateTheme();
   updateSidebarUI();
@@ -309,7 +293,7 @@ function renderControls() {
     const playPauseBtn = document.createElement('button');
     playPauseBtn.className = `flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm ${state.status === 'paused' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'btn-amber'}`;
     playPauseBtn.innerHTML = state.status === 'paused' ? '<i data-lucide="play" class="w-3.5 h-3.5"></i>' : '<i data-lucide="pause" class="w-3.5 h-3.5"></i>';
-    playPauseBtn.onclick = state.status === 'paused' ? () => setStatus('running') : handlePause;
+    playPauseBtn.onclick = state.status === 'paused' ? () => setStatus('running') : () => setStatus('paused');
 
     const stopBtn = document.createElement('button');
     stopBtn.className = "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm btn-red";
@@ -523,95 +507,39 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
 }
 
 // --- Orchestration Logic ---
-let currentRound = 0;
-let orchestratorActive = false;
-
-async function runOrchestrator() {
+async function runBroadcast(text) {
   if (state.activeMembers.length === 0) return;
 
-  orchestratorActive = true;
-  currentRound = 0;
   setStatus('running');
 
-  // debateTurn counts AI-to-AI exchanges to drive debate→consensus transition
-  let debateTurn = 0;
+  const broadcastPromises = state.activeMembers.map(async (memberId) => {
+    const member = state.tabs.find(t => t.id === memberId);
+    if (!member || !member.connected) return;
 
-  while (orchestratorActive && currentRound < state.config.maxRounds) {
-    for (const memberId of state.activeMembers) {
-      if (!orchestratorActive) break;
+    // Use a unique ID for the waiting message
+    const waitingId = `wait-${memberId}-${Date.now()}`;
+    state.messages.push({
+      id: waitingId,
+      sender: member.name,
+      senderType: 'system',
+      text: `Waiting for ${member.name}...`,
+      timestamp: Date.now()
+    });
+    render();
 
-      const member = state.tabs.find(t => t.id === memberId);
-      if (!member || !member.connected) continue;
-
-      // Collect the most recent response from EACH other active AI (with name labels)
-      const otherAiMsgs = state.activeMembers
-        .filter(id => id !== member.id)
-        .map(id => {
-          const tab = state.tabs.find(t => t.id === id);
-          if (!tab) return null;
-          return [...state.messages].reverse().find(m => m.senderType === 'ai' && m.sender === tab.name);
-        })
-        .filter(Boolean);
-
-      let context;
-      if (otherAiMsgs.length === 0) {
-        // First round — no other AI has responded yet, use human messages as context
-        context = state.messages
-          .filter(m => m.sender !== member.name)
-          .slice(-5)
-          .map(m => `${m.sender}: ${m.text}`)
-          .join('\n');
-      } else {
-        // Debate/consensus turn — include last message from each other AI with their names
-        debateTurn++;
-        const instruction = debateTurn <= state.config.maxDebateTurns
-          ? state.config.debateInstruction
-          : state.config.consensusInstruction;
-        const othersContext = otherAiMsgs.map(m => `${m.sender}: ${m.text}`).join('\n\n---\n\n');
-        context = `[Instruction: ${instruction}]\n\n${othersContext}`;
-      }
-
-      const prompt = `Context:\n${context}\n\nRespond as ${member.name}. Keep response under ${state.config.maxLength} words.`;
-
-      addMessage('System', 'system', `Waiting for ${member.name}...`);
-
-      // Countdown on the waiting pill — direct DOM update to avoid full re-render each second
-      let remaining = state.config.responseTimeout;
-      const waitingPill = chatHistory.lastElementChild?.querySelector('div');
-      if (waitingPill) waitingPill.textContent = `Waiting for ${member.name}... ${remaining}s`;
-      const countdownInterval = setInterval(() => {
-        remaining--;
-        if (waitingPill) {
-          waitingPill.textContent = remaining > 0
-            ? `Waiting for ${member.name}... ${remaining}s`
-            : `Waiting for ${member.name}... timing out`;
-        }
-      }, 1000);
-
-      const responseText = await getAIResponse(member, prompt);
-      clearInterval(countdownInterval);
-
-      // Remove the "Waiting for..." system message
-      state.messages.pop();
-
-      if (!orchestratorActive) {
-        render();
-        break;
-      }
-
+    try {
+      const responseText = await getAIResponse(member, text);
+      // Remove the waiting message
+      state.messages = state.messages.filter(m => m.id !== waitingId);
       addMessage(member.name, 'ai', responseText);
-
-      // Delay between turns (0.5s)
-      await new Promise(r => setTimeout(r, 500));
+    } catch (err) {
+      state.messages = state.messages.filter(m => m.id !== waitingId);
+      addMessage(member.name, 'ai', `[Error]: ${err.message}`);
     }
-    currentRound++;
-  }
-  
-  if (orchestratorActive) {
-    addMessage('System', 'system', `Reached maximum rounds (${state.config.maxRounds}). Discussion paused.`);
-    setStatus('paused');
-  }
-  orchestratorActive = false;
+  });
+
+  await Promise.all(broadcastPromises);
+  setStatus('idle');
 }
 
 // --- Actions ---
@@ -631,24 +559,15 @@ function setStatus(status) {
 }
 
 function handleStart() {
-  if (state.activeMembers.length < 1) {
-    alert("Please select at least 1 AI member to start a discussion.");
-    return;
+  const text = chatInput.value.trim();
+  if (text) {
+    handleSendMessage();
   }
-  
-  runOrchestrator();
-}
-
-function handlePause() {
-  orchestratorActive = false;
-  setStatus('paused');
-  addMessage('System', 'system', 'Discussion paused.');
 }
 
 function handleStop() {
-  orchestratorActive = false;
   setStatus('idle');
-  addMessage('System', 'system', 'Discussion ended.');
+  addMessage('System', 'system', 'Stopped.');
 }
 
 function handleClear() {
@@ -681,17 +600,13 @@ function addMessage(sender, senderType, text) {
 async function handleSendMessage(e) {
   e?.preventDefault();
   const text = chatInput.value.trim();
-  if (!text) return;
+  if (!text || state.activeMembers.length === 0) return;
   
   addMessage('You', 'human', text);
   chatInput.value = '';
   sendButton.disabled = true;
   
-  // If running, the orchestrator will pick it up on the next turn.
-  // If idle, start the orchestrator with this message.
-  if (state.status === 'idle' && state.activeMembers.length > 0) {
-    runOrchestrator();
-  }
+  await runBroadcast(text);
   
   sendButton.disabled = false;
 }
@@ -743,33 +658,11 @@ function setupEventListeners() {
     saveState();
   };
 
-  maxRoundsSlider.oninput = (e) => {
-    state.config.maxRounds = parseInt(e.target.value);
-    maxRoundsValue.textContent = state.config.maxRounds;
-  };
-  maxRoundsSlider.onchange = () => { saveState(); };
-
   responseTimeoutSlider.oninput = (e) => {
     state.config.responseTimeout = parseInt(e.target.value);
     responseTimeoutValue.textContent = state.config.responseTimeout;
   };
   responseTimeoutSlider.onchange = () => { saveState(); };
-
-  maxDebateTurnsSlider.oninput = (e) => {
-    state.config.maxDebateTurns = parseInt(e.target.value);
-    maxDebateTurnsValue.textContent = state.config.maxDebateTurns;
-  };
-  maxDebateTurnsSlider.onchange = () => { saveState(); };
-
-  debateInstructionInput.onchange = (e) => {
-    state.config.debateInstruction = e.target.value;
-    saveState();
-  };
-
-  consensusInstructionInput.onchange = (e) => {
-    state.config.consensusInstruction = e.target.value;
-    saveState();
-  };
 
   if (scanTabsBtn) {
     scanTabsBtn.onclick = async () => {

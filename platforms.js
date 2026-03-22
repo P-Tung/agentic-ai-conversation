@@ -17,7 +17,7 @@ const PLATFORMS = [
     id: 'claude',
     name: 'Claude',
     iconSrc: 'assets/claude-ai-icon.svg',
-    urlPatterns: ['*://claude.ai/*'],
+    urlPatterns: ['*://claude.ai/*', '*://*.claude.ai/*'],
     selectors: {
       input: [
         'div.ProseMirror[contenteditable="true"]',
@@ -51,7 +51,7 @@ const PLATFORMS = [
     id: 'grok',
     name: 'Grok',
     iconSrc: 'assets/grok-icon.svg',
-    urlPatterns: ['*://grok.com/*', '*://x.com/i/grok*'],
+    urlPatterns: ['*://grok.com/*', '*://*.grok.com/*', '*://x.com/i/grok*', '*://twitter.com/i/grok*'],
     selectors: {
       input: ['div[contenteditable="true"]', 'textarea'],
       sendBtn: [
