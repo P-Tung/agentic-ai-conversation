@@ -5,6 +5,8 @@
   "description": "Multi-AI discussion workspace in your sidebar",
   "permissions": ["sidePanel", "storage", "tabs", "scripting"],
   "host_permissions": [
+    "http://localhost/*",
+    "https://localhost/*",
     "*://chatgpt.com/*",
     "*://claude.ai/*",
     "*://gemini.google.com/*",
@@ -12,6 +14,13 @@
     "*://grok.com/*",
     "*://www.perplexity.ai/*"
   ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "https://localhost/*",
+      "http://127.0.0.1/*"
+    ]
+  },
   "action": {
     "default_title": "Open Agentic AI Conversation",
     "default_icon": {

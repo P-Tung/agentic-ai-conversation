@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Council of AI</title>
+    <link rel="stylesheet" href="output.css">
+    <style>
+      .hl-keyword  { color: #7c3aed; }
+      .hl-string   { color: #15803d; }
+      .hl-comment  { color: #6b7280; font-style: italic; }
+      .hl-number   { color: #b45309; }
+      .hl-function { color: #1d4ed8; }
+      .hl-type     { color: #0e7490; }
+      .hl-attr     { color: #9333ea; }
+      .hl-tag      { color: #b91c1c; }
+      .hl-builtin  { color: #0e7490; }
+      .dark .hl-keyword  { color: #a78bfa; }
+      .dark .hl-string   { color: #4ade80; }
+      .dark .hl-comment  { color: #9ca3af; }
+      .dark .hl-number   { color: #fbbf24; }
+      .dark .hl-function { color: #60a5fa; }
+      .dark .hl-type     { color: #22d3ee; }
+      .dark .hl-attr     { color: #c084fc; }
+      .dark .hl-tag      { color: #f87171; }
+      .dark .hl-builtin  { color: #22d3ee; }
+      .btn-amber { background:rgba(245,158,11,0.12); color:#b45309; }
+      .btn-amber:hover { background:rgba(245,158,11,0.22); }
+      .dark .btn-amber { background:rgba(245,158,11,0.15); color:#fbbf24; }
+      .dark .btn-amber:hover { background:rgba(245,158,11,0.25); }
+      .btn-red { background:rgba(239,68,68,0.10); color:#dc2626; }
+      .btn-red:hover { background:rgba(239,68,68,0.20); }
+      .dark .btn-red { background:rgba(239,68,68,0.15); color:#f87171; }
+      .dark .btn-red:hover { background:rgba(239,68,68,0.25); }
+      @keyframes spin-cw { to { transform: rotate(360deg); } }
+      .scanning svg { animation: spin-cw 0.7s linear infinite; }
+    </style>
+    <script src="lucide.min.js"></script>
+  </head>
+  <body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200">
+    <div id="app-container" class="flex h-[100dvh] w-full overflow-hidden">
+
+      <!-- Sidebar Overlay -->
+      <div id="sidebar-overlay" class="hidden absolute inset-0 bg-black/40 dark:bg-black/60 z-20 transition-opacity"></div>
+
+      <!-- Sidebar -->
+      <aside id="sidebar" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition-all duration-300 ease-in-out flex flex-col overflow-hidden w-80">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
+          <h1 class="font-semibold text-lg flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i>
+            Agentic AI
+          </h1>
+          <button id="close-sidebar" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+            <i data-lucide="panel-left-close" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+          <!-- Extension Status -->
+          <section>
+            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+              AI Members
+              <div class="flex items-center gap-1.5">
+                <span id="ext-status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                <span id="ext-status-label" class="text-[10px] text-gray-400">Searching...</span>
+              </div>
+            </h2>
+            <button id="scan-tabs-btn" class="w-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 mb-3">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i> Scan for AI Tabs
+            </button>
+            <div id="tabs-list" class="space-y-2"></div>
+            <p id="no-tabs-msg" class="text-xs text-gray-500 dark:text-gray-400 italic text-center mt-3 hidden">
+              No AI tabs found.<br>Open ChatGPT, Claude, Gemini, Grok, or Perplexity.
+            </p>
+          </section>
+
+          <!-- Mode Toggle -->
+          <section>
+            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <i data-lucide="settings" class="w-3.5 h-3.5"></i> Mode
+            </h2>
+            <div id="mode-toggle" class="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <button id="council-mode-btn" class="mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm">Council</button>
+              <button id="debate-mode-btn" class="mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-gray-500 dark:text-gray-400">Debate</button>
+            </div>
+          </section>
+
+          <!-- Configuration -->
+          <section id="debate-config-section" class="hidden space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
+                <span>Max Rounds</span>
+                <span id="max-rounds-value" class="text-indigo-500 font-mono">7</span>
+              </label>
+              <input id="max-rounds-slider" type="range" min="1" max="100" step="1" value="7" class="w-full accent-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
+                <span>Max Debate Turns</span>
+                <span id="max-debate-turns-value" class="text-indigo-500 font-mono">5</span>
+              </label>
+              <input id="max-debate-turns-slider" type="range" min="1" max="100" step="1" value="5" class="w-full accent-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Debate Instruction</label>
+              <textarea id="debate-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20" placeholder="Debate instructions..."></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Consensus Instruction</label>
+              <textarea id="consensus-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20" placeholder="Consensus instructions..."></textarea>
+            </div>
+          </section>
+
+          <!-- Settings -->
+          <section>
+            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Settings</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
+                  <span>Response Timeout</span>
+                  <span><span id="response-timeout-value" class="text-indigo-500 font-mono">30</span><span class="text-gray-400">s</span></span>
+                </label>
+                <input id="response-timeout-slider" type="range" min="5" max="120" step="5" value="30" class="w-full accent-indigo-500">
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-800 flex flex-col items-center gap-1">
+          <span class="text-[10px] text-gray-400 dark:text-gray-500">Powered by <a href="https://tunghuynh.net" target="_blank" class="hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2">Tùng Huynh</a></span>
+          <a href="https://buymeacoffee.com/tunghuynhts" target="_blank" class="text-[10px] text-amber-500 hover:text-amber-600 dark:text-amber-400">☕ Buy me a coffee</a>
+        </div>
+      </aside>
+
+      <!-- Main Chat Area -->
+      <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-950">
+        <!-- Header -->
+        <header class="h-12 flex-shrink-0 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md z-10">
+          <div class="flex items-center gap-2">
+            <button id="open-sidebar" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+              <i data-lucide="panel-left-open" class="w-5 h-5"></i>
+            </button>
+            <div id="controls-container" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg"></div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="clear-chat" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Clear Conversation">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+            <button id="toggle-theme" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+              <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Sessions Grid -->
+        <div id="sessions-container" class="flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500">
+          <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
+            </div>
+            <div class="space-y-1">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="flex-shrink-0 p-3 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800">
+          <form id="chat-form" class="flex items-end gap-2">
+            <div class="relative flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500 transition-all shadow-sm overflow-hidden">
+              <textarea id="chat-input" placeholder="Ask the council..." class="w-full max-h-32 min-h-[44px] py-3 pl-3 pr-2 bg-transparent outline-none resize-none text-sm text-gray-800 dark:text-gray-200" rows="1"></textarea>
+            </div>
+            <button id="send-button" type="submit" disabled class="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-800 disabled:text-gray-500 text-white transition-colors shadow-sm">
+              <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
+            </button>
+          </form>
+          <div class="text-center mt-1.5">
+            <span class="text-[9px] text-gray-400 dark:text-gray-500">Messages broadcasted to all active AI members via extension bridge.</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="platforms.js"></script>
+    <script src="syntax-highlight.js"></script>
+    <script>
+    // =========================================================
+    // web-ui.html — Main UI (communicates with extension via chrome.runtime)
+    // Extension side panel (index.html) acts as bridge for AI tab interactions.
+    // =========================================================
+
+    const INITIAL_TABS = PLATFORMS.map(p => ({ id: p.id, name: p.name, iconSrc: p.iconSrc, connected: false, tabId: null }));
+
+    let state = {
+      theme: 'dark',
+      status: 'idle',
+      mode: 'council',
+      tabs: INITIAL_TABS,
+      activeMembers: [],
+      messages: [],
+      config: { responseTimeout: 30 },
+      sidebarOpen: true,
+      extensionAvailable: false,
+      msgIdCounter: 0,
+    };
+
+    // --- DOM ---
+    const sessionsContainer = document.getElementById('sessions-container');
+    const tabsList = document.getElementById('tabs-list');
+    const scanTabsBtn = document.getElementById('scan-tabs-btn');
+    const noTabsMsg = document.getElementById('no-tabs-msg');
+    const extStatusDot = document.getElementById('ext-status-dot');
+    const extStatusLabel = document.getElementById('ext-status-label');
+    const chatInput = document.getElementById('chat-input');
+    const chatForm = document.getElementById('chat-form');
+    const sendButton = document.getElementById('send-button');
+    const toggleThemeBtn = document.getElementById('toggle-theme');
+    const themeIcon = document.getElementById('theme-icon');
+    const clearChatBtn = document.getElementById('clear-chat');
+    const openSidebarBtn = document.getElementById('open-sidebar');
+    const closeSidebarBtn = document.getElementById('close-sidebar');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const controlsContainer = document.getElementById('controls-container');
+    const responseTimeoutSlider = document.getElementById('response-timeout-slider');
+    const responseTimeoutValue = document.getElementById('response-timeout-value');
+    const debateConfigSection = document.getElementById('debate-config-section');
+    const maxRoundsSlider = document.getElementById('max-rounds-slider');
+    const maxRoundsValue = document.getElementById('max-rounds-value');
+    const maxDebateTurnsSlider = document.getElementById('max-debate-turns-slider');
+    const maxDebateTurnsValue = document.getElementById('max-debate-turns-value');
+    const modeToggle = document.getElementById('mode-toggle');
+    const councilModeBtn = document.getElementById('council-mode-btn');
+    const debateModeBtn = document.getElementById('debate-mode-btn');
+
+    function escHtml(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function parseMarkdown(text) {
+      if (!text) return '';
+      const blocks = [];
+      let html = text.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        const i = blocks.length;
+        const highlighted = Highlighter.highlight(code.trim(), lang);
+        blocks.push(`<div class="code-block my-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">`+
+          `<div class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 select-none">`+
+          `<span class="text-[10px] font-mono text-gray-500 dark:text-gray-400">${escHtml(lang||'code')}</span>`+
+          `<button class="copy-btn text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer">Copy</button>`+
+          `</div><pre class="bg-gray-50 dark:bg-gray-900 p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre"><code>${highlighted}</code></pre></div>`);
+        return `\x00BLOCK${i}\x00`;
+      });
+      html = escHtml(html);
+      html = html.replace(/`([^`\n]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs font-mono">$1</code>');
+      html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+      html = html.replace(/^#{1,3} (.+)$/gm, '<div class="font-semibold mt-1.5 mb-0.5">$1</div>');
+      html = html.replace(/^[*\-•] (.+)$/gm, '<div class="flex gap-1.5 ml-2"><span>•</span><span>$1</span></div>');
+      html = html.replace(/^(\d+)\. (.+)$/gm, '<div class="flex gap-1.5 ml-2"><span>$1.</span><span>$2</span></div>');
+      html = html.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+      blocks.forEach((b, i) => { html = html.replace(`\x00BLOCK${i}\x00`, b); });
+      return html;
+    }
+
+    // --- Extension communication (port-based) ---
+    const EXTENSION_ID = 'ihhilpmigmaajhpgmnckcjdfgideidpa';
+    const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id === EXTENSION_ID);
+    let extensionPort = null;
+    const pendingCallbacks = new Map();
+
+    function nextId() { return `wui_${Date.now()}_${state.msgIdCounter++}`; }
+
+    function connectToExtension() {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.connect) {
+        setExtStatus(false, 'Extension API not available');
+        return;
+      }
+      try {
+        // When running as extension page: connect directly
+        // When running on localhost: connect with extension ID (requires externally_connectable)
+        extensionPort = isExtensionPage
+          ? chrome.runtime.connect({ name: 'webui-bridge' })
+          : chrome.runtime.connect(EXTENSION_ID, { name: 'webui-bridge' });
+
+        extensionPort.onMessage.addListener((msg) => {
+          if (!msg) return;
+
+          // Connection confirmation or pong
+          if (msg.type === 'pong' || msg.connected) {
+            setExtStatus(true, 'Extension online');
+            return;
+          }
+
+          // Command acknowledgment
+          if (msg.type === 'ack' && msg.id) {
+            const cb = pendingCallbacks.get(msg.id);
+            if (cb) { cb.resolve({ ok: true }); pendingCallbacks.delete(msg.id); }
+            return;
+          }
+
+          // Command error
+          if (msg.type === 'error' && msg.id) {
+            const cb = pendingCallbacks.get(msg.id);
+            if (cb) { cb.reject(new Error(msg.error || 'Unknown error')); pendingCallbacks.delete(msg.id); }
+            return;
+          }
+
+          // Relay responses (tab_scan, ai_waiting, ai_response)
+          if (msg.target === 'webui') {
+            handleRelayResponse(msg);
+          }
+        });
+
+        extensionPort.onDisconnect.addListener(() => {
+          extensionPort = null;
+          setExtStatus(false, 'Extension disconnected');
+          // Auto-reconnect after delay
+          setTimeout(connectToExtension, 3000);
+        });
+
+      } catch (err) {
+        console.error('[web-ui] Connect error:', err);
+        setExtStatus(false, 'Cannot connect to extension');
+        setTimeout(connectToExtension, 5000);
+      }
+    }
+
+    function sendToExtension(type, payload = {}) {
+      return new Promise((resolve, reject) => {
+        if (!extensionPort) {
+          reject(new Error('Extension not connected. Please ensure the extension panel is open.'));
+          return;
+        }
+        const id = nextId();
+        pendingCallbacks.set(id, { resolve, reject });
+        extensionPort.postMessage({ target: 'background', id, type, payload });
+        // Timeout after 10 seconds for ack
+        setTimeout(() => {
+          if (pendingCallbacks.has(id)) {
+            pendingCallbacks.delete(id);
+            reject(new Error('Extension communication timeout'));
+          }
+        }, 10000);
+      });
+    }
+
+    function handleRelayResponse(msg) {
+      const { responseType, data } = msg;
+
+      if (responseType === 'tab_scan') {
+        state.tabs.forEach(t => { t.connected = false; t.tabId = null; });
+        (data || []).forEach(d => {
+          const tab = state.tabs.find(t => t.id === d.id);
+          if (tab) { tab.connected = true; tab.tabId = d.tabId; }
+        });
+        renderTabs();
+      }
+
+      if (responseType === 'ai_waiting') {
+        if (!state.messages.find(m => m.id === data.id)) {
+          state.messages.push(data);
+          renderSessions();
+        }
+      }
+
+      if (responseType === 'ai_response') {
+        if (data.id && data.id.startsWith('wait_')) {
+          state.messages = state.messages.filter(m => m.id !== data.id);
+        }
+        if (!state.messages.find(m => m.id === data.id)) {
+          state.messages.push(data);
+        }
+        renderSessions();
+        const waiting = state.messages.filter(m => m.senderType === 'system' && m.text && m.text.startsWith('Waiting for'));
+        if (waiting.length === 0 && state.status === 'running') {
+          state.status = 'idle';
+          sendButton.disabled = false;
+          renderControls();
+        }
+      }
+
+      if (responseType === 'error') {
+        console.error('[web-ui] Extension error:', data);
+      }
+    }
+
+    // --- Render ---
+    function render() {
+      renderTabs();
+      renderSessions();
+      renderControls();
+      renderModeToggle();
+      updateSidebarUI();
+    }
+
+    function renderTabs() {
+      tabsList.innerHTML = '';
+      const connectedTabs = state.tabs.filter(t => t.connected);
+      if (connectedTabs.length === 0) { noTabsMsg.classList.remove('hidden'); }
+      else { noTabsMsg.classList.add('hidden'); }
+      state.tabs.forEach(tab => {
+        if (!tab.connected) return;
+        const isActive = state.activeMembers.includes(tab.id);
+        const el = document.createElement('div');
+        el.className = `flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}`;
+        el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="w-5 h-5 rounded-md flex items-center justify-center border ${isActive ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent'}"><i data-lucide="check-square" class="w-3.5 h-3.5"></i></div>`;
+        el.onclick = () => toggleMember(tab.id);
+        tabsList.appendChild(el);
+      });
+      lucide.createIcons();
+    }
+
+    function renderSessions() {
+      const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
+      const count = activeTabs.length;
+      if (count === 0) {
+        sessionsContainer.innerHTML = `<div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none"><div class="w-14 h-14 rounded-2xl flex items-center justify-center"><i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i></div><div class="space-y-1"><p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p><p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p></div></div>`;
+        lucide.createIcons(); return;
+      }
+      const emptyState = sessionsContainer.querySelector('#empty-state');
+      if (emptyState) emptyState.remove();
+      sessionsContainer.className = '';
+      sessionsContainer.classList.add('flex-1','overflow-hidden','p-3','sm:p-4','grid','gap-4','bg-gray-50/50','dark:bg-gray-950/50','transition-all','duration-500',`sessions-grid-${Math.min(count,6)}`);
+      const existingWindows = Array.from(sessionsContainer.querySelectorAll('.session-window'));
+      const activeIds = activeTabs.map(t => t.id);
+      existingWindows.forEach(w => { if (!activeIds.includes(w.dataset.id)) w.remove(); });
+      activeTabs.slice(0,6).forEach(tab => {
+        let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${tab.id}"]`);
+        if (!windowEl) {
+          windowEl = document.createElement('div');
+          windowEl.className = 'session-window';
+          windowEl.dataset.id = tab.id;
+          windowEl.innerHTML = `<div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50"><div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><img src="${tab.iconSrc}" class="w-4 h-4 object-contain"></div><span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span><div class="ml-auto flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span></div></div><div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
+          sessionsContainer.appendChild(windowEl);
+        }
+        renderMessagesForSession(tab.id, tab.name, windowEl.querySelector('.chat-messages'));
+      });
+      lucide.createIcons();
+    }
+
+    function renderMessagesForSession(memberId, memberName, container) {
+      const msgs = state.messages.filter(m => {
+        if (m.senderType === 'human') return true;
+        if (m.senderType === 'ai' && m.sender === memberName) return true;
+        if (m.senderType === 'system' && m.sender === memberName) return true;
+        return false;
+      });
+      container.innerHTML = '';
+      msgs.forEach(msg => {
+        const isHuman = msg.senderType === 'human';
+        const isSystem = msg.senderType === 'system';
+        if (isSystem) {
+          const sysEl = document.createElement('div');
+          sysEl.className = "flex justify-center my-3";
+          sysEl.innerHTML = `<div class="bg-gray-100/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-[10px] px-2.5 py-0.5 rounded-full font-medium border border-gray-200/50 dark:border-gray-700/30 text-center">${escHtml(msg.text)}</div>`;
+          container.appendChild(sysEl); return;
+        }
+        const el = document.createElement('div');
+        el.className = `flex gap-2.5 max-w-[95%] ${isHuman ? 'ml-auto flex-row-reverse' : 'mr-auto'}`;
+        const content = isHuman ? escHtml(msg.text) : parseMarkdown(msg.text);
+        const color = isHuman ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm';
+        el.innerHTML = `<div class="flex flex-col ${isHuman?'items-end':'items-start'}><div class="flex items-baseline gap-1.5 mb-0.5 px-0.5"><span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">${isHuman?'You':msg.sender}</span></div><div class="px-3 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm ${color}">${content}</div></div>`;
+        container.appendChild(el);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderControls() {
+      controlsContainer.innerHTML = '';
+      if (state.status === 'idle') {
+        const btn = document.createElement('button');
+        btn.className = "flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors shadow-sm";
+        btn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i>';
+        btn.disabled = true;
+        btn.style.visibility = 'hidden';
+        controlsContainer.appendChild(btn);
+      } else {
+        const stopBtn = document.createElement('button');
+        stopBtn.className = "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm btn-red";
+        stopBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5"></i>';
+        stopBtn.onclick = handleStop;
+        controlsContainer.appendChild(stopBtn);
+      }
+      lucide.createIcons();
+    }
+
+    function renderModeToggle() {
+      councilModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='council' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
+      debateModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='debate' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
+      debateConfigSection.classList.toggle('hidden', state.mode !== 'debate');
+    }
+
+    function updateSidebarUI() {
+      sidebar.className = `flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition-all duration-300 ease-in-out flex flex-col overflow-hidden w-80`;
+      sidebarOverlay.classList.add('hidden');
+    }
+
+    function updateTheme() {
+      if (state.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        themeIcon.setAttribute('data-lucide', 'sun');
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+    }
+
+    function setExtStatus(online, msg) {
+      state.extensionAvailable = online;
+      extStatusDot.className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-amber-500'}`;
+      extStatusLabel.textContent = msg;
+    }
+
+    // --- Actions ---
+    function toggleMember(id) {
+      if (state.activeMembers.includes(id)) state.activeMembers = state.activeMembers.filter(m => m !== id);
+      else state.activeMembers.push(id);
+      renderSessions();
+      chatInput.oninput && chatInput.oninput();
+    }
+
+    function handleStop() {
+      state.status = 'idle';
+      renderControls();
+    }
+
+    function handleClear() {
+      if (confirm('Clear conversation?')) {
+        state.messages = [];
+        state.status = 'idle';
+        render();
+      }
+    }
+
+    async function handleSendMessage(e) {
+      e?.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text || state.activeMembers.length === 0) return;
+      chatInput.value = '';
+      sendButton.disabled = true;
+      state.status = 'running';
+      renderControls();
+
+      const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+      state.messages.push({ id: msgId, sender: 'You', senderType: 'human', text, timestamp: Date.now() });
+      renderSessions();
+
+      for (const memberId of state.activeMembers) {
+        const member = state.tabs.find(t => t.id === memberId);
+        if (!member || !member.connected) continue;
+        const waitingId = `wait_${memberId}_${Date.now()}`;
+        state.messages.push({ id: waitingId, sender: member.name, senderType: 'system', text: `Waiting for ${member.name}...`, timestamp: Date.now() });
+        renderSessions();
+        // ai_command responses arrive via port message handler, not via promise
+        sendToExtension('ai_command', { memberId, memberName: member.name, message: text, waitingId, responseTimeout: state.config.responseTimeout || 30 })
+          .catch((err) => {
+            // Only show error if the command itself failed (not a response delivery issue)
+            state.messages = state.messages.filter(m => m.id !== waitingId);
+            state.messages.push({ id: `err_${Date.now()}`, sender: member.name, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() });
+            renderSessions();
+          });
+      }
+    }
+
+    // --- Init ---
+    function init() {
+      updateTheme();
+
+      // Connect to extension via port (replaces polling-based probeExtension)
+      connectToExtension();
+
+      // Event listeners
+      chatInput.oninput = () => { sendButton.disabled = !chatInput.value.trim() || state.activeMembers.length === 0; };
+      chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
+      chatForm.onsubmit = handleSendMessage;
+      toggleThemeBtn.onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; updateTheme(); };
+      clearChatBtn.onclick = handleClear;
+      openSidebarBtn.onclick = () => { sidebar.classList.remove('hidden'); };
+      closeSidebarBtn.onclick = () => { sidebar.classList.add('hidden'); };
+      sidebarOverlay.onclick = () => { sidebar.classList.add('hidden'); };
+
+      scanTabsBtn.onclick = async () => {
+        if (!extensionPort) { alert('Extension not connected. Please click the extension icon in your browser toolbar to open the panel.'); return; }
+        scanTabsBtn.disabled = true; scanTabsBtn.classList.add('scanning');
+        try {
+          await sendToExtension('scan_tabs');
+        } catch (err) {
+          alert(`Scan failed: ${err.message}`);
+        } finally {
+          scanTabsBtn.classList.remove('scanning'); scanTabsBtn.disabled = false;
+        }
+      };
+
+      responseTimeoutSlider.oninput = (e) => { state.config.responseTimeout = parseInt(e.target.value); responseTimeoutValue.textContent = state.config.responseTimeout; };
+      councilModeBtn.onclick = () => { state.mode = 'council'; renderModeToggle(); };
+      debateModeBtn.onclick = () => { state.mode = 'debate'; renderModeToggle(); };
+
+      render();
+      lucide.createIcons();
+    }
+
+    init();
+    </script>
+  </body>
+</html>

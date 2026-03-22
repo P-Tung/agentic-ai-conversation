@@ -22,7 +22,9 @@ let state = {
     responseTimeout: 30,
   },
   sidebarOpen: window.innerWidth > window.innerHeight,
-  isLandscape: window.innerWidth > window.innerHeight
+  isLandscape: window.innerWidth > window.innerHeight,
+  bridgeReady: false,
+  bridgeSessionId: null,
 };
 
 // --- DOM Elements ---
@@ -55,6 +57,8 @@ const howtoOverlay = document.getElementById('howto-overlay');
 const modeToggleContainer = document.getElementById('mode-toggle');
 const debateConfigSection = document.getElementById('debate-config-section');
 const debateRoundsConfig = document.getElementById('debate-rounds-config');
+const shareBtn = document.getElementById('share-btn');
+const shareIndicator = document.getElementById('share-indicator');
 
 // --- Initialization ---
 async function init() {
@@ -89,6 +93,8 @@ async function init() {
   // Initial icons
   refreshIcons();
 }
+
+
 
 function refreshIcons() {
   if (typeof lucide !== 'undefined') {
@@ -496,6 +502,16 @@ async function scanTabs() {
 
   saveState();
   render();
+
+  // Relay scan results to web-ui.html via background service worker
+  const results = state.tabs
+    .filter(t => t.connected)
+    .map(t => ({ id: t.id, name: t.name, tabId: t.tabId }));
+  chrome.runtime.sendMessage({
+    target: 'webui',
+    type: 'tab_scan',
+    data: results
+  }).catch(() => {});
 }
 
 // --- AI Interaction via Content Scripts ---
@@ -607,7 +623,7 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
 // TODO [Future]: Implement debate mode orchestration
 // - Council Mode (current): Broadcast same message to all AIs simultaneously
 // - Debate Mode (future): Sequential debate with turn-based responses
-async function runBroadcast(text) {
+async function runBroadcast(text, parentMsgId = null) {
   if (state.activeMembers.length === 0) return;
 
   // TODO [Future]: When state.mode === 'debate', implement debate orchestration
@@ -628,7 +644,8 @@ async function runBroadcast(text) {
       sender: member.name,
       senderType: 'system',
       text: `Waiting for ${member.name}...`,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      inReplyTo: parentMsgId,
     });
     render();
 
@@ -636,10 +653,36 @@ async function runBroadcast(text) {
       const responseText = await getAIResponse(member, text);
       // Remove the waiting message
       state.messages = state.messages.filter(m => m.id !== waitingId);
-      addMessage(member.name, 'ai', responseText);
+      
+      // Add to local state and relay to web-ui
+      const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const aiMsg = {
+        id: msgId,
+        sender: member.name,
+        senderType: 'ai',
+        text: responseText,
+        timestamp: Date.now(),
+        inReplyTo: parentMsgId,
+      };
+      state.messages.push(aiMsg);
+      saveState();
+      chrome.runtime.sendMessage({ target: 'webui', type: 'ai_response', data: aiMsg }).catch(() => {});
+      render();
     } catch (err) {
       state.messages = state.messages.filter(m => m.id !== waitingId);
-      addMessage(member.name, 'ai', `[Error]: ${err.message}`);
+      const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const aiMsg = {
+        id: msgId,
+        sender: member.name,
+        senderType: 'ai',
+        text: `[Error]: ${err.message}`,
+        timestamp: Date.now(),
+        inReplyTo: parentMsgId,
+      };
+      state.messages.push(aiMsg);
+      saveState();
+      chrome.runtime.sendMessage({ target: 'webui', type: 'ai_response', data: aiMsg }).catch(() => {});
+      render();
     }
   });
 
@@ -690,13 +733,15 @@ function handleClear() {
   }
 }
 
-function addMessage(sender, senderType, text) {
+function addMessage(sender, senderType, text, inReplyTo = null) {
+  const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   state.messages.push({
-    id: Date.now().toString(),
+    id: msgId,
     sender,
     senderType,
     text,
-    timestamp: Date.now()   // store as ms number — JSON-safe, avoids Invalid Date on reload
+    timestamp: Date.now(),
+    inReplyTo,
   });
   saveState();
   render();
@@ -707,11 +752,13 @@ async function handleSendMessage(e) {
   const text = chatInput.value.trim();
   if (!text || state.activeMembers.length === 0) return;
   
-  addMessage('You', 'human', text);
   chatInput.value = '';
   sendButton.disabled = true;
+
+  // Add to local state
+  addMessage('You', 'human', text, null);
   
-  await runBroadcast(text);
+  await runBroadcast(text, null);
   
   sendButton.disabled = false;
 }
@@ -777,6 +824,15 @@ function setupEventListeners() {
       scanTabsBtn.classList.remove('scanning');
       scanTabsBtn.disabled = false;
     };
+  }
+
+  // Share button — open web UI in new tab
+  if (shareBtn) {
+    shareBtn.onclick = () => {
+      const base = window.location.origin + window.location.pathname.replace(/\/$/, '');
+      window.open(`${base}/web-ui.html`, '_blank');
+    };
+    shareBtn.title = 'Open full-screen view in new tab';
   }
 
   // How to Use modal open/close

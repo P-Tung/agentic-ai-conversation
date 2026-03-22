@@ -164,6 +164,15 @@
             <div id="controls-container" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
               <!-- Control buttons will be injected here -->
             </div>
+
+            <!-- Share Button -->
+            <button id="share-btn" class="hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Open in Full Screen">
+              <i data-lucide="external-link" class="w-4 h-4"></i>
+            </button>
+            <span id="share-indicator" class="hidden text-[9px] text-indigo-500 font-medium flex items-center gap-0.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Live
+            </span>
             
             <div class="flex items-center gap-1.5 ml-1">
               <span class="relative flex h-2.5 w-2.5">
@@ -291,9 +300,13 @@
       </div>
     </div>
 
-    <!-- Platform configurations (add platforms here, no core code changes needed) -->
+    <!-- Bridge libs -->
     <script src="platforms.js"></script>
     <script src="syntax-highlight.js"></script>
+
+    <!-- Command relay: receives commands from web-ui.html via background.js → MessagePort, executes, responds -->
+    <script src="relay.js"></script>
+    <!-- Original app (full UI, tab scanning, AI interaction) -->
     <script src="script.js"></script>
   </body>
 </html>

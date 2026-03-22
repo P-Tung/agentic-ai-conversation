@@ -1,6 +1,70 @@
 # Upgrade Log
 
-## v1.2 - Council Mode Implementation (Current)
+## v1.3 - BroadcastChannel Relay Bridge (Current)
+
+### Overview
+
+Replaced Firebase with native **BroadcastChannel API** — zero backend, zero auth, zero cost.
+
+### Architecture
+
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│  Chrome Extension   │         │   web-ui.html        │
+│  (index.html)      │         │  (standalone page)   │
+│                     │         │                     │
+│  - Sidebar config  │         │  - Read-only viewer │
+│  - AI tab control  │  ←→     │  - Full-screen grid │
+│  - Send messages   │  BroadcastChannel            │
+└─────────────────────┘         └─────────────────────┘
+```
+
+### Files Added
+
+| File | Purpose |
+|------|---------|
+| `broadcast-bridge.js` | Native BroadcastChannel service (same API shape as FirebaseBridge) |
+
+### Files Removed
+
+| File | Reason |
+|------|--------|
+| `firebase-config.js` | No longer needed |
+| `firebase-bridge.js` | Replaced by BroadcastBridge |
+| `firebase.json` | No longer needed |
+| `database.rules.json` | No longer needed |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `index.html` | Replaced Firebase scripts with broadcast-bridge.js |
+| `web-ui.html` | Same — no Firebase SDK, uses BroadcastBridge |
+| `script.js` | Replaced fbBridge → bcBridge, sync bridge |
+
+### How It Works
+
+- `BroadcastChannel('council_{sessionId}')` — native browser API for tab-to-tab messaging
+- Extension and web UI share the same `sessionId` via `sessionStorage`
+- When user clicks **Share**, URL `?session=xxx` is passed to web UI
+- Real-time, zero latency, zero cost
+- **Security**: All data stays in the browser. No server, no database, no auth.
+
+### Limitations
+
+- Only works **on the same device + same browser** (same-origin tabs)
+- No cross-device sharing
+- No persistence (refreshing clears messages unless stored)
+
+### TODO [Future]
+
+- Add `localStorage` persistence for message history
+- Add IndexedDB for cross-session persistence
+- Firebase relay if/when cross-device sharing is needed
+
+---
+
+## v1.2 - Council Mode Implementation
 
 ### Completed
 
