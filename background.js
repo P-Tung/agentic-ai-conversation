@@ -105,6 +105,17 @@ const PLATFORMS = [
       response: ['.content_wrap', '.markdown-body'],
     },
   },
+  {
+    id: 'genspark',
+    name: 'GenSpark',
+    urlPatterns: ['*://www.genspark.ai/*'],
+    selectors: {
+      input: ['textarea.search-input.j-search-input', 'textarea'],
+      sendBtn: ['.right-icon-group div:last-child', 'button[type="submit"]'],
+      response: ['.spark-content', '.prose'],
+      exclude: ['.thinking-process', '.thought-block']
+    },
+  },
 ];
 
 // =========================================================

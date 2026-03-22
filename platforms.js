@@ -131,4 +131,17 @@ const PLATFORMS = [
       exclude: []
     },
   },
+  {
+    id: 'genspark',
+    name: 'GenSpark',
+    iconSrc: 'assets/genspark-icon.png',
+    urlPatterns: ['*://www.genspark.ai/*'],
+    homeUrl: 'https://www.genspark.ai/',
+    selectors: {
+      input: ['textarea.search-input.j-search-input', 'textarea'],
+      sendBtn: ['.right-icon-group div:last-child', 'button[type="submit"]'],
+      response: ['.spark-content', '.prose'],
+      exclude: ['.thinking-process', '.thought-block']
+    },
+  },
 ];
