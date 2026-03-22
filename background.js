@@ -149,8 +149,25 @@ async function handleAICommand(id, { memberId, memberName, message, waitingId, r
       return;
     }
     postResponseToWebUI({ id, responseType: 'ai_waiting', data: { id: waitingId, sender: memberName, senderType: 'system', text: `Waiting for ${memberName}...`, timestamp: Date.now() } });
-    const responseText = await getAIResponseRelay(memberTab, message, responseTimeout);
-    postResponseToWebUI({ id, responseType: 'ai_response', data: { id: `msg_${Date.now()}`, sender: memberName, senderType: 'ai', text: responseText, timestamp: Date.now() } });
+    const response = await getAIResponseRelay(memberTab, message, responseTimeout);
+    
+    // Handle structured response (thought + answer)
+    const isStruct = typeof response === 'object' && response !== null;
+    const responseText = isStruct ? response.answer : response;
+    const thoughtText = isStruct ? response.thought : '';
+
+    postResponseToWebUI({ 
+      id, 
+      responseType: 'ai_response', 
+      data: { 
+        id: `msg_${Date.now()}`, 
+        sender: memberName, 
+        senderType: 'ai', 
+        text: responseText, 
+        thought: thoughtText,
+        timestamp: Date.now() 
+      } 
+    });
   } catch (err) {
     postResponseToWebUI({ id, responseType: 'ai_response', data: { id: `msg_err_${Date.now()}`, sender: memberName, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() } });
   }
@@ -179,44 +196,133 @@ async function getAIResponseRelay(member, message, responseTimeout = 30) {
 }
 
 // This function is injected into AI tabs via chrome.scripting.executeScript
+// This function is injected into AI tabs via chrome.scripting.executeScript
 function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
   return new Promise((resolve) => {
     try {
+      // 1. Initial State: Count existing responses to detect the new one appearing
+      const getResponseCount = () => {
+        for (const sel of (selectors.response || [])) {
+          const els = document.querySelectorAll(sel);
+          if (els.length > 0) return els.length;
+        }
+        return 0;
+      };
+      const initialCount = getResponseCount();
+
+      // 2. Find and fill input
       const inputEl = (selectors.input || []).map(s => document.querySelector(s)).find(el => el !== null);
       if (!inputEl) return resolve('[Error] Could not find input box.');
+
       if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
         const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
         if (nativeSetter) nativeSetter.call(inputEl, message); else inputEl.value = message;
         inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
       } else if (inputEl.isContentEditable) {
         inputEl.focus();
         document.execCommand('selectAll', false, null);
         document.execCommand('insertText', false, message);
         inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
+
+      // 3. Send message
       setTimeout(() => {
         const isBtnReady = (btn) => btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
         const attemptSend = (retries = 0) => {
           const btn = (selectors.sendBtn || []).map(s => document.querySelector(s)).find(el => el !== null);
-          if (isBtnReady(btn)) { btn.click(); }
-          else if (btn && retries < 20) { setTimeout(() => attemptSend(retries + 1), 100); return; }
-          else { inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }
+          if (isBtnReady(btn)) {
+            btn.click();
+          } else if (btn && retries < 20) {
+            setTimeout(() => attemptSend(retries + 1), 100);
+            return;
+          } else {
+            inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+          }
+
+          // 4. Poll for New Response
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = (responseTimeout || 20) * (1000 / POLL_INTERVAL_MS);
-          let attempts = 0, previousText = '';
+          const maxAttempts = (responseTimeout || 30) * (1000 / POLL_INTERVAL_MS);
+          let attempts = 0;
+          let previousText = '';
+          let stableCount = 0;
+
           const checkResponse = setInterval(() => {
             attempts++;
-            let responseText = '';
+            
+            // Try to find the new response element
+            let responseContainer = null;
             for (const sel of (selectors.response || [])) {
               const els = document.querySelectorAll(sel);
-              if (els.length > 0) { responseText = els[els.length - 1].innerText; break; }
+              // Wait for count to increase OR if it was already empty, wait for first one
+              if (els.length > initialCount) {
+                responseContainer = els[els.length - 1];
+                break;
+              } else if (initialCount === 0 && els.length > 0) {
+                responseContainer = els[0];
+                break;
+              }
             }
-            if (responseText && responseText === previousText && attempts > 4) {
-              clearInterval(checkResponse); resolve(responseText);
-            } else if (attempts > maxAttempts) {
-              clearInterval(checkResponse); resolve(responseText || `[Error] No response from ${platformId}.`);
+
+            if (responseContainer) {
+              const clone = responseContainer.cloneNode(true);
+              
+                  // Extract Thought Process if present
+                  let thoughtHTML = '';
+                  const thoughtSelectors = [
+                    'details', '.thought', '.thinking', '.reasoning', 
+                    '.thought-process', '.thinking-block', '.thinking-process', 
+                    '.thought-container', '.thought-block', '.thinking-chain-container',
+                    '[class*="thought"]', '[class*="thinking"]', '[class*="reasoning"]'
+                  ];
+                  
+                  // Use specific platform excludes as potential thoughts too
+                  const allThoughtSels = [...new Set([...thoughtSelectors, ...(selectors.exclude || [])])];
+                  
+                  allThoughtSels.forEach(s => {
+                    clone.querySelectorAll(s).forEach(t => {
+                      thoughtHTML += t.innerHTML + '<br>';
+                      t.remove();
+                    });
+                  });
+
+                  // Also check for "Thought Process" text headings
+                  const headings = Array.from(clone.querySelectorAll('*')).filter(el => 
+                    el.innerText?.toLowerCase().includes('thought process') && el.children.length === 0
+                  );
+                  headings.forEach(h => {
+                    thoughtHTML += h.outerHTML;
+                    let next = h.nextElementSibling;
+                    while (next && !next.innerText?.includes('\n')) {
+                      thoughtHTML += next.outerHTML;
+                      const toRemove = next;
+                      next = next.nextElementSibling;
+                      toRemove.remove();
+                    }
+                    h.remove();
+                  });
+
+                  const currentText = clone.innerText.trim();
+                  
+                  if (currentText && currentText === previousText) {
+                    stableCount++;
+                    if (stableCount >= 2) {
+                      clearInterval(checkResponse);
+                      resolve({
+                        thought: thoughtHTML.trim(),
+                        answer: currentText
+                      });
+                    }
+                  } else {
+                    stableCount = 0;
+                  }
+                  previousText = currentText;
             }
-            previousText = responseText;
+
+            if (attempts > maxAttempts) {
+              clearInterval(checkResponse);
+              resolve(`[Error] Timeout waiting for response from ${platformId}.`);
+            }
           }, POLL_INTERVAL_MS);
         };
         attemptSend();

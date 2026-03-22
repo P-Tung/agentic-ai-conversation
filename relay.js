@@ -39,8 +39,25 @@ async function handleAICommand(id, { memberId, memberName, message, waitingId, r
       return;
     }
     postResponse({ id, responseType: 'ai_waiting', data: { id: waitingId, sender: memberName, senderType: 'system', text: `Waiting for ${memberName}...`, timestamp: Date.now() } });
-    const responseText = await getAIResponseRelay(memberTab, message, responseTimeout);
-    postResponse({ id, responseType: 'ai_response', data: { id: `msg_${Date.now()}`, sender: memberName, senderType: 'ai', text: responseText, timestamp: Date.now() } });
+    const response = await getAIResponseRelay(memberTab, message, responseTimeout);
+    
+    // Handle structured response (thought + answer)
+    const isStruct = typeof response === 'object' && response !== null;
+    const responseText = isStruct ? response.answer : response;
+    const thoughtText = isStruct ? response.thought : '';
+
+    postResponse({ 
+      id, 
+      responseType: 'ai_response', 
+      data: { 
+        id: `msg_${Date.now()}`, 
+        sender: memberName, 
+        senderType: 'ai', 
+        text: responseText, 
+        thought: thoughtText,
+        timestamp: Date.now() 
+      } 
+    });
   } catch (err) {
     postResponse({ id, responseType: 'ai_response', data: { id: `msg_err_${Date.now()}`, sender: memberName, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() } });
   }
@@ -68,6 +85,14 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
     try {
       const inputEl = (selectors.input || []).map(s => document.querySelector(s)).find(el => el !== null);
       if (!inputEl) return resolve('[Error] Could not find input box.');
+
+      // 1. Snapshot initial response count to detect NEW messages
+      let initialCount = 0;
+      for (const sel of (selectors.response || [])) {
+        initialCount += document.querySelectorAll(sel).length;
+      }
+
+      // 2. Clear then Set Input
       if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
         const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
         if (nativeSetter) nativeSetter.call(inputEl, message); else inputEl.value = message;
@@ -78,42 +103,126 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
         document.execCommand('insertText', false, message);
         inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
+
+      // 3. Click Send
       setTimeout(() => {
         const isBtnReady = (btn) => btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
         const attemptSend = (retries = 0) => {
           const btn = (selectors.sendBtn || []).map(s => document.querySelector(s)).find(el => el !== null);
-          if (isBtnReady(btn)) { btn.click(); }
-          else if (btn && retries < 20) { setTimeout(() => attemptSend(retries + 1), 100); return; }
-          else { inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }
+          if (isBtnReady(btn)) {
+            btn.click();
+          } else if (btn && retries < 20) {
+            setTimeout(() => attemptSend(retries + 1), 100);
+            return;
+          } else {
+            inputEl.focus();
+            inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+          }
+
+          // 4. Polling for Response
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = responseTimeout > 0 ? (responseTimeout * (1000 / POLL_INTERVAL_MS)) : Infinity;
-          let attempts = 0, previousText = '';
+          const maxWaitSeconds = responseTimeout > 0 ? responseTimeout : 30;
+          const startTimestamp = Date.now();
+          let stabilityCount = 0;
+          let previousText = '';
+          let newMessageDetected = false;
+
           const checkResponse = setInterval(() => {
-            attempts++;
-            let responseText = '';
+            const elapsed = (Date.now() - startTimestamp) / 1000;
+            
+            // Collect all potential responses
+            let currentResponses = [];
             for (const sel of (selectors.response || [])) {
               const els = document.querySelectorAll(sel);
-              if (els.length > 0) {
-                const lastEl = els[els.length - 1];
-                const clone = lastEl.cloneNode(true);
-                
-                if (selectors.exclude && Array.isArray(selectors.exclude)) {
-                  selectors.exclude.forEach(exSel => {
-                    clone.querySelectorAll(exSel).forEach(exEl => exEl.remove());
-                  });
-                }
-                clone.querySelectorAll('details').forEach(d => d.remove());
-                
-                responseText = clone.innerText;
-                break;
+              currentResponses = currentResponses.concat(Array.from(els));
+            }
+
+            // Step A: Wait for a NEW element to appear (increment in count)
+            if (!newMessageDetected) {
+              if (currentResponses.length > initialCount) {
+                newMessageDetected = true;
+                this.console?.log('[Relay] New message element detected.');
               }
+              if (elapsed > 10 && !newMessageDetected) {
+                // Fallback: If no new element after 10s, maybe it appended to an old one or we missed the count
+                newMessageDetected = true;
+              }
+              if (elapsed > maxWaitSeconds) {
+                clearInterval(checkResponse);
+                resolve('[Error] Timeout waiting for AI to start responding.');
+              }
+              return;
             }
-            if (responseText && responseText === previousText && attempts > 4) {
-              clearInterval(checkResponse); resolve(responseText);
-            } else if (attempts > maxAttempts) {
-              clearInterval(checkResponse); resolve(responseText || `[Error] No response from ${platformId}.`);
+
+            // Step B: Polling the LATEST element for stability
+            const latestEl = currentResponses[currentResponses.length - 1];
+            if (!latestEl) {
+              if (elapsed > maxWaitSeconds) { clearInterval(checkResponse); resolve('[Error] No response element found.'); }
+              return;
             }
-            previousText = responseText;
+
+            // Extract content, separating thoughts if present
+            const clone = latestEl.cloneNode(true);
+            
+            // Remove excluded elements (like citations or copy buttons)
+            if (selectors.exclude && Array.isArray(selectors.exclude)) {
+              selectors.exclude.forEach(exSel => {
+                clone.querySelectorAll(exSel).forEach(exEl => exEl.remove());
+              });
+            }
+
+            // Extract Thought Process
+            let thoughtHTML = '';
+            const thoughtSelectors = [
+              'details', '.thought', '.thinking', '.reasoning', 
+              '.thought-process', '.thinking-block', '.thinking-process', 
+              '.thought-container', '.thought-block', '.thinking-chain-container',
+              '[class*="thought"]', '[class*="thinking"]', '[class*="reasoning"]'
+            ];
+            const allThoughtSels = [...new Set([...thoughtSelectors, ...(selectors.exclude || [])])];
+            
+            allThoughtSels.forEach(s => {
+              clone.querySelectorAll(s).forEach(t => {
+                thoughtHTML += t.innerHTML + '<br>';
+                t.remove();
+              });
+            });
+
+            // Also check for "Thought Process" text headings
+            const headings = Array.from(clone.querySelectorAll('*')).filter(el => 
+              el.innerText?.toLowerCase().includes('thought process') && el.children.length === 0
+            );
+            headings.forEach(h => {
+              thoughtHTML += h.outerHTML;
+              let next = h.nextElementSibling;
+              while (next && !next.innerText?.includes('\n')) {
+                thoughtHTML += next.outerHTML;
+                const toRemove = next;
+                next = next.nextElementSibling;
+                toRemove.remove();
+              }
+              h.remove();
+            });
+
+            const currentText = clone.innerText.trim();
+
+            // Stability check: text must remain the same for non-zero length
+            if (currentText && currentText === previousText) {
+              stabilityCount++;
+            } else {
+              stabilityCount = 0;
+            }
+
+            // If stable for 3 cycles (1.5s), consider it done
+            if (stabilityCount >= 3) {
+              clearInterval(checkResponse);
+              resolve({ thought: thoughtHTML.trim(), answer: currentText });
+            } else if (elapsed > maxWaitSeconds) {
+              clearInterval(checkResponse);
+              resolve({ thought: thoughtHTML.trim(), answer: currentText || `[Error] Response timed out.` });
+            }
+
+            previousText = currentText;
           }, POLL_INTERVAL_MS);
         };
         attemptSend();

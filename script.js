@@ -602,19 +602,20 @@ async function getAIResponse(member, userMessage) {
 async function interactWithAI(platformId, message, selectors, responseTimeout) {
   return new Promise((resolve) => {
     try {
-      // Find first available input element (send button is re-queried on each attempt inside attemptSend)
-      const inputEl = selectors.input.map(s => document.querySelector(s)).find(el => el !== null);
+      const inputEl = (selectors.input || []).map(s => document.querySelector(s)).find(el => el !== null);
+      if (!inputEl) return resolve('[Error] Could not find input box.');
 
-      if (!inputEl) {
-        return resolve("[Error]: Could not find input box on the page.");
+      // 1. Snapshot initial response count to detect NEW messages
+      let initialCount = 0;
+      for (const sel of (selectors.response || [])) {
+        initialCount += document.querySelectorAll(sel).length;
       }
 
-      // Insert text — React-compatible native value setter for controlled inputs
+      // 2. Clear then Set Input
       if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
         const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
         if (nativeSetter) nativeSetter.call(inputEl, message); else inputEl.value = message;
         inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
       } else if (inputEl.isContentEditable) {
         inputEl.focus();
         document.execCommand('selectAll', false, null);
@@ -622,138 +623,130 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
         inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
-      // Click send after brief delay for frameworks to process input
+      // 3. Click Send
       setTimeout(() => {
-        // Re-query button on each attempt: React/ProseMirror may re-render and create new DOM nodes,
-        // making the original sendBtnEl reference stale. Also check aria-disabled (used by Claude).
         const isBtnReady = (btn) => btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
-
         const attemptSend = (retries = 0) => {
-          const btn = selectors.sendBtn.map(s => document.querySelector(s)).find(el => el !== null);
+          const btn = (selectors.sendBtn || []).map(s => document.querySelector(s)).find(el => el !== null);
           if (isBtnReady(btn)) {
             btn.click();
           } else if (btn && retries < 20) {
-            // Button found but disabled — wait for framework to enable it (100ms × 20 = 2s max)
             setTimeout(() => attemptSend(retries + 1), 100);
             return;
           } else {
-            // No button found or still disabled after 2s — fall back to Enter key
-            inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+            inputEl.focus();
+            inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
           }
 
-          // Poll for a stable response (stops when text hasn't changed for 1s)
-          // Interval: 500ms → maxAttempts = responseTimeout (seconds) × 2
-          // If responseTimeout is 0, we wait indefinitely
+          // 4. Polling for Response (Robust 1-for-all)
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = responseTimeout > 0 ? (responseTimeout * (1000 / POLL_INTERVAL_MS)) : Infinity;
-          let attempts = 0;
+          const maxWaitSeconds = responseTimeout > 0 ? responseTimeout : 30;
+          const startTimestamp = Date.now();
+          let stabilityCount = 0;
           let previousText = '';
+          let newMessageDetected = false;
 
-          // --- Dynamic Extraction Logic (1-for-all) ---
-          const findResponse = () => {
-            // 1. Find the prompt element by text content (highly reliable for sent messages)
-            const allElements = document.querySelectorAll('div, p, span, [data-testid*="message"]');
-            let promptEl = null;
-            // Clean message for comparison
-            const cleanMsg = message.trim();
-            for (let i = allElements.length - 1; i >= 0; i--) {
-              const el = allElements[i];
-              if (el.innerText?.trim() === cleanMsg && !el.querySelector('div, p')) {
-                promptEl = el;
-                break;
-              }
-            }
-
-            // 2. Identify the response block following the prompt
-            let responseContainer = null;
-            if (promptEl) {
-              // Traverse up to find the message wrapper
-              let current = promptEl;
-              let depth = 0;
-              while (current && depth < 10) {
-                const next = current.nextElementSibling;
-                if (next) {
-                  // If we find a direct sibling, it's likely the response or the next message row
-                  responseContainer = next;
-                  break;
-                }
-                current = current.parentElement;
-                depth++;
-              }
-            }
-
-            // Fallback to selectors if dynamic discovery fails
-            if (!responseContainer) {
-              for (const sel of selectors.response) {
-                const els = document.querySelectorAll(sel);
-                if (els.length > 0) { responseContainer = els[els.length - 1]; break; }
-              }
-            }
-
-            if (!responseContainer) return null;
-
-            // 3. Process and Split (Thought vs Answer)
-            const clone = responseContainer.cloneNode(true);
+          const checkResponse = setInterval(() => {
+            const elapsed = (Date.now() - startTimestamp) / 1000;
             
-            // Look for explicit thought elements first
+            // Collect all potential responses
+            let currentResponses = [];
+            for (const sel of (selectors.response || [])) {
+              const els = document.querySelectorAll(sel);
+              currentResponses = currentResponses.concat(Array.from(els));
+            }
+
+            // Step A: Wait for a NEW element to appear (increment in count)
+            if (!newMessageDetected) {
+              if (currentResponses.length > initialCount) {
+                newMessageDetected = true;
+                this.console?.log('[Extension] New message element detected.');
+              }
+              if (elapsed > 10 && !newMessageDetected) {
+                // Fallback: If no new element after 10s, maybe it appended to an old one or we missed the count
+                newMessageDetected = true;
+              }
+              if (elapsed > maxWaitSeconds) {
+                clearInterval(checkResponse);
+                resolve('[Error] Timeout waiting for AI to start responding.');
+              }
+              return;
+            }
+
+            // Step B: Polling the LATEST element for stability
+            const latestEl = currentResponses[currentResponses.length - 1];
+            if (!latestEl) {
+              if (elapsed > maxWaitSeconds) { clearInterval(checkResponse); resolve('[Error] No response element found.'); }
+              return;
+            }
+
+            // Extract content, separating thoughts if present
+            const clone = latestEl.cloneNode(true);
+            
+            // Remove excluded elements (like citations or copy buttons)
+            if (selectors.exclude && Array.isArray(selectors.exclude)) {
+              selectors.exclude.forEach(exSel => {
+                clone.querySelectorAll(exSel).forEach(exEl => exEl.remove());
+              });
+            }
+
+            // Extract Thought Process
             let thoughtHTML = '';
-            const thoughtSels = selectors.exclude || ['.thought', '.thinking', 'details', '.thought-block'];
-            thoughtSels.forEach(s => {
+            const thoughtSelectors = [
+              'details', '.thought', '.thinking', '.reasoning', 
+              '.thought-process', '.thinking-block', '.thinking-process', 
+              '.thought-container', '.thought-block', '.thinking-chain-container',
+              '[class*="thought"]', '[class*="thinking"]', '[class*="reasoning"]'
+            ];
+            const allThoughtSels = [...new Set([...thoughtSelectors, ...(selectors.exclude || [])])];
+            
+            allThoughtSels.forEach(s => {
               clone.querySelectorAll(s).forEach(t => {
-                thoughtHTML += t.innerHTML;
+                thoughtHTML += t.innerHTML + '<br>';
                 t.remove();
               });
             });
 
-            // If no explicit thought, check for "Thought Process" headings/text
-            if (!thoughtHTML) {
-               const headings = Array.from(clone.querySelectorAll('*')).filter(el => 
-                 el.innerText?.toLowerCase().includes('thought process') && el.children.length === 0
-               );
-               if (headings.length > 0) {
-                 // Take the heading and its siblings until the next major block
-                 const h = headings[0];
-                 thoughtHTML = h.outerHTML;
-                 let next = h.nextElementSibling;
-                 while (next && !next.innerText?.includes('\n')) {
-                    thoughtHTML += next.outerHTML;
-                    const toRemove = next;
-                    next = next.nextElementSibling;
-                    toRemove.remove();
-                 }
-                 h.remove();
-               }
+            // Also check for "Thought Process" text headings
+            const headings = Array.from(clone.querySelectorAll('*')).filter(el => 
+              el.innerText?.toLowerCase().includes('thought process') && el.children.length === 0
+            );
+            headings.forEach(h => {
+              thoughtHTML += h.outerHTML;
+              let next = h.nextElementSibling;
+              while (next && !next.innerText?.includes('\n')) {
+                thoughtHTML += next.outerHTML;
+                const toRemove = next;
+                next = next.nextElementSibling;
+                toRemove.remove();
+              }
+              h.remove();
+            });
+
+            const currentText = clone.innerText.trim();
+
+            // Stability check: text must remain the same for non-zero length
+            if (currentText && currentText === previousText) {
+              stabilityCount++;
+            } else {
+              stabilityCount = 0;
             }
 
-            return {
-              thought: thoughtHTML.trim(),
-              answer: clone.innerHTML.trim(),
-              rawText: clone.innerText.trim()
-            };
-          };
-
-          const checkResponse = setInterval(() => {
-            attempts++;
-            const result = findResponse();
-            const currentText = result?.rawText || '';
-
-            if (currentText && currentText === previousText && attempts > 4) {
+            // If stable for 3 cycles (1.5s), consider it done
+            if (stabilityCount >= 3) {
               clearInterval(checkResponse);
-              resolve(result); // Return the full object now
-            } else if (attempts > maxAttempts) {
+              resolve({ thought: thoughtHTML.trim(), answer: currentText });
+            } else if (elapsed > maxWaitSeconds) {
               clearInterval(checkResponse);
-              resolve(result || `[Error]: No response received from ${platformId}.`);
+              resolve({ thought: thoughtHTML.trim(), answer: currentText || `[Error] Response timed out.` });
             }
+
             previousText = currentText;
-          }, 500);
+          }, POLL_INTERVAL_MS);
         };
-
         attemptSend();
       }, 500);
-
-    } catch (err) {
-      resolve(`[Error]: ${err.message}`);
-    }
+    } catch (err) { resolve(`[Error] ${err.message}`); }
   });
 }
 
