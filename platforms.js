@@ -6,6 +6,7 @@ const PLATFORMS = [
     name: 'ChatGPT',
     iconSrc: 'assets/chatgpt-icon.svg',
     urlPatterns: ['*://chatgpt.com/*'],
+    homeUrl: 'https://chatgpt.com/',
     selectors: {
       // Tried in order; first match wins
       input: ['#prompt-textarea', 'div[contenteditable="true"]'],
@@ -18,6 +19,7 @@ const PLATFORMS = [
     name: 'Claude',
     iconSrc: 'assets/claude-ai-icon.svg',
     urlPatterns: ['*://claude.ai/*', '*://*.claude.ai/*'],
+    homeUrl: 'https://claude.ai/',
     selectors: {
       input: [
         'div.ProseMirror[contenteditable="true"]',
@@ -41,6 +43,7 @@ const PLATFORMS = [
     name: 'Gemini',
     iconSrc: 'assets/google-gemini-icon.svg',
     urlPatterns: ['*://gemini.google.com/*'],
+    homeUrl: 'https://gemini.google.com/',
     selectors: {
       input: ['div.ql-editor', 'textarea'],
       sendBtn: ['.send-button', 'button[aria-label="Send message"]'],
@@ -52,6 +55,7 @@ const PLATFORMS = [
     name: 'Grok',
     iconSrc: 'assets/grok-icon.svg',
     urlPatterns: ['*://grok.com/*', '*://*.grok.com/*', '*://x.com/i/grok*', '*://twitter.com/i/grok*'],
+    homeUrl: 'https://grok.com/',
     selectors: {
       input: ['div[contenteditable="true"]', 'textarea'],
       sendBtn: [
@@ -67,6 +71,7 @@ const PLATFORMS = [
     name: 'Perplexity',
     iconSrc: 'assets/perplexity-ai-icon.svg',
     urlPatterns: ['*://www.perplexity.ai/*'],
+    homeUrl: 'https://www.perplexity.ai/',
     selectors: {
       input: ['div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
       sendBtn: ['button[aria-label="Submit"]', 'button[type="submit"]'],
@@ -78,6 +83,7 @@ const PLATFORMS = [
     name: 'Kimi',
     iconSrc: 'assets/kimi-icon.png',
     urlPatterns: ['*://www.kimi.com/*', '*://*.kimi.com/*'],
+    homeUrl: 'https://www.kimi.com/',
     selectors: {
       input: ['.chat-input-editor', 'div[role="textbox"]'],
       sendBtn: ['.send-button-container', 'button:has(svg[class*="send"])'],
@@ -89,6 +95,7 @@ const PLATFORMS = [
     name: 'Z.ai',
     iconSrc: 'assets/zai-icon.png',
     urlPatterns: ['*://chat.z.ai/*'],
+    homeUrl: 'https://chat.z.ai/',
     selectors: {
       input: ['#chat-input'],
       sendBtn: ['#send-message-button'],
@@ -100,6 +107,7 @@ const PLATFORMS = [
     name: 'MiniMax',
     iconSrc: 'assets/minimax-icon.png',
     urlPatterns: ['*://agent.minimax.io/*'],
+    homeUrl: 'https://agent.minimax.io/',
     selectors: {
       input: ['.tiptap-editor', 'div[contenteditable="true"]'],
       sendBtn: ['button:has(svg)', 'div:has(svg)'],

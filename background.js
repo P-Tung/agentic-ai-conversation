@@ -294,3 +294,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   handleCommand(msg);
   sendResponse({ ok: true });
 });
+
+let autoScanTimeout = null;
+function triggerAutoScan() {
+  if (!webuiPort) return; // Only scan if UI is connected
+  
+  if (autoScanTimeout) clearTimeout(autoScanTimeout);
+  
+  // Use a slight timeout to let the browser finalize the tab state and debounce rapid calls
+  autoScanTimeout = setTimeout(() => {
+    scanTabsRelay().then(tabs => {
+      postResponseToWebUI({ id: 'auto_scan', responseType: 'tab_scan', data: tabs });
+    });
+  }, 200);
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // We care about URL changes or when the page finishes loading
+  if (changeInfo.url || changeInfo.status === 'complete') {
+    triggerAutoScan();
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  triggerAutoScan();
+});

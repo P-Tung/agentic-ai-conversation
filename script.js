@@ -1,6 +1,6 @@
 // --- Constants & State ---
 // Tabs are derived from PLATFORMS config (defined in platforms.js)
-const INITIAL_TABS = PLATFORMS.map(p => ({ id: p.id, name: p.name, iconSrc: p.iconSrc, connected: false, tabId: null }));
+const INITIAL_TABS = PLATFORMS.map(p => ({ id: p.id, name: p.name, iconSrc: p.iconSrc, homeUrl: p.homeUrl, connected: false, tabId: null }));
 
 let state = {
   theme: 'dark',
@@ -166,48 +166,69 @@ function render() {
 function renderTabs() {
   tabsList.innerHTML = '';
   
-  const connectedTabs = state.tabs.filter(t => t.connected);
-  
-  if (connectedTabs.length === 0) {
-    noTabsMsg.classList.remove('hidden');
-  } else {
-    noTabsMsg.classList.add('hidden');
-  }
+  noTabsMsg.classList.add('hidden');
 
-  state.tabs.forEach(tab => {
-    if (!tab.connected) return;
-    
-    const isActive = state.activeMembers.includes(tab.id);
+  const sortedTabs = [...state.tabs].sort((a, b) => {
+    if (a.connected && !b.connected) return -1;
+    if (!a.connected && b.connected) return 1;
+    return 0; // maintain original order
+  });
+
+  sortedTabs.forEach(tab => {
+    const isActive = tab.connected && state.activeMembers.includes(tab.id);
     const tabEl = document.createElement('div');
-    tabEl.className = `
-      flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all
-      ${isActive 
-          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' 
-          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}
-    `;
     
-    tabEl.innerHTML = `
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700">
-          <img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain">
-        </div>
-        <div>
-          <div class="font-medium text-sm">${tab.name}</div>
-          <div class="text-xs text-emerald-600 dark:text-emerald-400">
-            Ready
+    if (tab.connected) {
+      tabEl.className = `
+        flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all mb-2
+        ${isActive 
+            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' 
+            : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}
+      `;
+      
+      tabEl.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700">
+            <img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain">
+          </div>
+          <div>
+            <div class="font-medium text-sm">${tab.name}</div>
+            <div class="text-xs text-emerald-600 dark:text-emerald-400">
+              Ready
+            </div>
           </div>
         </div>
-      </div>
-      <div class="w-5 h-5 rounded-md flex items-center justify-center border ${
-        isActive 
-          ? 'bg-indigo-500 border-indigo-500 text-white' 
-          : 'border-gray-300 dark:border-gray-600 text-transparent'
-      }">
-        <i data-lucide="check" class="w-3.5 h-3.5"></i>
-      </div>
-    `;
+        <div class="w-5 h-5 rounded-md flex items-center justify-center border ${
+          isActive 
+            ? 'bg-indigo-500 border-indigo-500 text-white' 
+            : 'border-gray-300 dark:border-gray-600 text-transparent'
+        }">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+        </div>
+      `;
+      tabEl.onclick = () => toggleMember(tab.id);
+    } else {
+      tabEl.className = `
+        flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-75 mb-2
+      `;
+      tabEl.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale">
+            <img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain">
+          </div>
+          <div>
+            <div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div>
+            <div class="text-xs text-red-500 dark:text-red-400">
+              Not Ready
+            </div>
+          </div>
+        </div>
+        <button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="window.open('${tab.homeUrl}', '_blank'); event.stopPropagation();">
+          Open
+        </button>
+      `;
+    }
     
-    tabEl.onclick = () => toggleMember(tab.id);
     tabsList.appendChild(tabEl);
   });
   
@@ -880,3 +901,23 @@ function setupEventListeners() {
 
 // --- Start App ---
 init();
+
+if (typeof chrome !== 'undefined' && chrome.tabs) {
+  let scanTimeout = null;
+  const triggerLocalAutoScan = () => {
+    if (scanTimeout) clearTimeout(scanTimeout);
+    scanTimeout = setTimeout(() => {
+      scanTabs();
+    }, 200);
+  };
+  
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.url || changeInfo.status === 'complete') {
+      triggerLocalAutoScan();
+    }
+  });
+
+  chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+    triggerLocalAutoScan();
+  });
+}
