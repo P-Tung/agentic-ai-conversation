@@ -115,7 +115,7 @@
           <section>
             <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Settings</h2>
             <div class="space-y-4">
-              <div>
+              <div id="response-timeout-section">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
                   <span>Response Timeout</span>
                   <span><span id="response-timeout-value" class="text-indigo-500 font-mono">30</span><span class="text-gray-400">s</span></span>
@@ -226,6 +226,7 @@
     const controlsContainer = document.getElementById('controls-container');
     const responseTimeoutSlider = document.getElementById('response-timeout-slider');
     const responseTimeoutValue = document.getElementById('response-timeout-value');
+    const responseTimeoutSection = document.getElementById('response-timeout-section');
     const debateConfigSection = document.getElementById('debate-config-section');
     const maxRoundsSlider = document.getElementById('max-rounds-slider');
     const maxRoundsValue = document.getElementById('max-rounds-value');
@@ -510,6 +511,10 @@
       councilModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='council' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
       debateModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='debate' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
       debateConfigSection.classList.toggle('hidden', state.mode !== 'debate');
+      
+      if (responseTimeoutSection) {
+        responseTimeoutSection.classList.toggle('hidden', state.mode === 'council');
+      }
     }
 
     function updateSidebarUI() {
@@ -575,8 +580,10 @@
         const waitingId = `wait_${memberId}_${Date.now()}`;
         state.messages.push({ id: waitingId, sender: member.name, senderType: 'system', text: `Waiting for ${member.name}...`, timestamp: Date.now() });
         renderSessions();
-        // ai_command responses arrive via port message handler, not via promise
-        sendToExtension('ai_command', { memberId, memberName: member.name, message: text, waitingId, responseTimeout: state.config.responseTimeout || 30 })
+        // ai_command responses arrive via port message handler, not via promise.
+        // Use 0 for indefinite wait in council mode.
+        const timeoutValue = state.mode === 'council' ? 0 : (state.config.responseTimeout || 30);
+        sendToExtension('ai_command', { memberId, memberName: member.name, message: text, waitingId, responseTimeout: timeoutValue })
           .catch((err) => {
             // Only show error if the command itself failed (not a response delivery issue)
             state.messages = state.messages.filter(m => m.id !== waitingId);

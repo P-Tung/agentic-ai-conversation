@@ -36,6 +36,7 @@ const scanTabsBtn = document.getElementById('scan-tabs-btn');
 const noTabsMsg = document.getElementById('no-tabs-msg');
 const responseTimeoutSlider = document.getElementById('response-timeout-slider');
 const responseTimeoutValue = document.getElementById('response-timeout-value');
+const responseTimeoutSection = document.getElementById('response-timeout-section');
 const statusPing = document.getElementById('status-ping');
 const controlsContainer = document.getElementById('controls-container');
 const statusDot = document.getElementById('status-dot');
@@ -161,6 +162,7 @@ function render() {
   updateStatusUI();
   updateSidebarUI();
   updateDebateConfigVisibility();
+  updateResponseTimeoutVisibility();
 }
 
 function renderTabs() {
@@ -475,6 +477,7 @@ function setMode(mode) {
   saveState();
   renderModeToggle();
   updateDebateConfigVisibility();
+  updateResponseTimeoutVisibility();
 }
 
 function updateDebateConfigVisibility() {
@@ -486,6 +489,13 @@ function updateDebateConfigVisibility() {
   
   if (debateRoundsConfig) {
     debateRoundsConfig.classList.toggle('hidden', !isDebateMode);
+  }
+}
+
+function updateResponseTimeoutVisibility() {
+  const isDebateMode = state.mode === 'debate';
+  if (responseTimeoutSection) {
+    responseTimeoutSection.classList.toggle('hidden', !isDebateMode);
   }
 }
 
@@ -554,7 +564,7 @@ async function getAIResponse(member, userMessage) {
     chrome.scripting.executeScript({
       target: { tabId: member.tabId },
       func: interactWithAI,
-      args: [member.id, userMessage, platform.selectors, state.config.responseTimeout || 20]
+      args: [member.id, userMessage, platform.selectors, state.mode === 'debate' ? (state.config.responseTimeout || 30) : 0]
     }, (results) => {
       if (chrome.runtime.lastError) {
         resolve(`[Error]: Could not communicate with ${member.name} tab.`);
@@ -611,8 +621,9 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
 
           // Poll for a stable response (stops when text hasn't changed for 1s)
           // Interval: 500ms → maxAttempts = responseTimeout (seconds) × 2
+          // If responseTimeout is 0, we wait indefinitely
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = (responseTimeout || 20) * (1000 / POLL_INTERVAL_MS);
+          const maxAttempts = responseTimeout > 0 ? responseTimeout * (1000 / POLL_INTERVAL_MS) : Infinity;
           let attempts = 0;
           let previousText = '';
           const checkResponse = setInterval(() => {

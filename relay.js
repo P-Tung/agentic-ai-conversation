@@ -86,7 +86,7 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
           else if (btn && retries < 20) { setTimeout(() => attemptSend(retries + 1), 100); return; }
           else { inputEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = (responseTimeout || 20) * (1000 / POLL_INTERVAL_MS);
+          const maxAttempts = responseTimeout > 0 ? (responseTimeout * (1000 / POLL_INTERVAL_MS)) : Infinity;
           let attempts = 0, previousText = '';
           const checkResponse = setInterval(() => {
             attempts++;
