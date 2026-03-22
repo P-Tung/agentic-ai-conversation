@@ -203,7 +203,7 @@ function renderTabs() {
           ? 'bg-indigo-500 border-indigo-500 text-white' 
           : 'border-gray-300 dark:border-gray-600 text-transparent'
       }">
-        <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+        <i data-lucide="check" class="w-3.5 h-3.5"></i>
       </div>
     `;
     

@@ -403,7 +403,7 @@
         const isActive = state.activeMembers.includes(tab.id);
         const el = document.createElement('div');
         el.className = `flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}`;
-        el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="w-5 h-5 rounded-md flex items-center justify-center border ${isActive ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent'}"><i data-lucide="check-square" class="w-3.5 h-3.5"></i></div>`;
+        el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="w-5 h-5 rounded-md flex items-center justify-center border ${isActive ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent'}"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>`;
         el.onclick = () => toggleMember(tab.id);
         tabsList.appendChild(el);
       });
@@ -516,6 +516,7 @@
     function toggleMember(id) {
       if (state.activeMembers.includes(id)) state.activeMembers = state.activeMembers.filter(m => m !== id);
       else state.activeMembers.push(id);
+      renderTabs();
       renderSessions();
       chatInput.oninput && chatInput.oninput();
     }
