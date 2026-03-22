@@ -295,9 +295,14 @@ function renderSessions() {
             <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
           </div>
           <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
-          <div class="ml-auto flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span>
+          <div class="ml-auto flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span>
+            </div>
+            <button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
           </div>
         </div>
         <div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>
