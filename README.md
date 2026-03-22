@@ -1,7 +1,3 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # Agentic AI Conversation
 
 A system for sending a single message to **multiple AI chatbots** (ChatGPT, Claude, Gemini, Grok, Perplexity) simultaneously and viewing their responses side-by-side. The Chrome extension acts as an **invisible bridge** between a full-screen web UI and the AI chat tabs.
