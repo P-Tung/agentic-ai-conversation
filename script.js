@@ -225,7 +225,7 @@ function renderTabs() {
             </div>
           </div>
         </div>
-        <button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="chrome.tabs.create({url: '${tab.homeUrl}', active: false}); event.stopPropagation();">
+        <button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="chrome.tabs.create({url: '${tab.homeUrl}', active: false}); if(!state.activeMembers.includes('${tab.id}')) toggleMember('${tab.id}'); event.stopPropagation();">
           Open
         </button>
       `;
@@ -238,7 +238,7 @@ function renderTabs() {
 }
 
 function renderSessions() {
-  const activeTabs = state.tabs.filter(t => t.connected && state.activeMembers.includes(t.id));
+  const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
   const count = activeTabs.length;
 
   if (count === 0) {
@@ -297,8 +297,8 @@ function renderSessions() {
           <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
           <div class="ml-auto flex items-center gap-3">
             <div class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span>
+              <span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+              <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Not Ready'}</span>
             </div>
             <button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session">
               <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -310,7 +310,21 @@ function renderSessions() {
       sessionsContainer.appendChild(windowEl);
     }
     
-    renderMessagesForSession(tab.id, windowEl.querySelector('.chat-messages'));
+    if (tab.connected) {
+      renderMessagesForSession(tab.id, windowEl.querySelector('.chat-messages'));
+    } else {
+      windowEl.querySelector('.chat-messages').innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-center p-6 gap-3">
+          <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+            <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
+          </div>
+          <p class="text-xs font-medium text-gray-500">This AI tab is not open or ready.</p>
+          <button class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm" onclick="chrome.tabs.create({url: '${tab.homeUrl}', active: false}); event.stopPropagation();">
+            Open ${tab.name}
+          </button>
+        </div>
+      `;
+    }
   });
 
   refreshIcons();

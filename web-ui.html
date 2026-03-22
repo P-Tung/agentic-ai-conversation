@@ -423,7 +423,7 @@
           el.onclick = () => toggleMember(tab.id);
         } else {
           el.className = `flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-75 mb-2`;
-          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div><div class="text-xs text-red-500 dark:text-red-400">Not Ready</div></div></div><button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); event.stopPropagation();">Open</button>`;
+          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div><div class="text-xs text-red-500 dark:text-red-400">Not Ready</div></div></div><button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); if(!state.activeMembers.includes('${tab.id}')) toggleMember('${tab.id}'); event.stopPropagation();">Open</button>`;
         }
         tabsList.appendChild(el);
       });
@@ -431,7 +431,7 @@
     }
 
     function renderSessions() {
-      const activeTabs = state.tabs.filter(t => t.connected && state.activeMembers.includes(t.id));
+      const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
       const count = activeTabs.length;
       if (count === 0) {
         sessionsContainer.innerHTML = `<div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none"><div class="w-14 h-14 rounded-2xl flex items-center justify-center"><i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i></div><div class="space-y-1"><p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p><p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p></div></div>`;
@@ -450,10 +450,14 @@
           windowEl = document.createElement('div');
           windowEl.className = 'session-window';
           windowEl.dataset.id = tab.id;
-          windowEl.innerHTML = `<div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50"><div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><img src="${tab.iconSrc}" class="w-4 h-4 object-contain"></div><span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span><div class="ml-auto flex items-center gap-3"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span><span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Session</span></div><button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div></div><div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
+          windowEl.innerHTML = `<div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50"><div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><img src="${tab.iconSrc}" class="w-4 h-4 object-contain"></div><span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span><div class="ml-auto flex items-center gap-3"><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span><span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Not Ready'}</span></div><button onclick="toggleMember('${tab.id}'); event.stopPropagation();" class="w-5 h-5 rounded-md flex items-center justify-center bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-all shadow-sm active:scale-95" title="Close Session"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div></div><div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
           sessionsContainer.appendChild(windowEl);
         }
-        renderMessagesForSession(tab.id, tab.name, windowEl.querySelector('.chat-messages'));
+        if (tab.connected) {
+          renderMessagesForSession(tab.id, tab.name, windowEl.querySelector('.chat-messages'));
+        } else {
+          windowEl.querySelector('.chat-messages').innerHTML = `<div class="flex flex-col items-center justify-center h-full text-center p-6 gap-3"><div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center"><i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i></div><p class="text-xs font-medium text-gray-500">This AI tab is not open or ready.</p><button class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); if(!state.activeMembers.includes('${tab.id}')) toggleMember('${tab.id}'); event.stopPropagation();">Open ${tab.name}</button></div>`;
+        }
       });
       lucide.createIcons();
     }
