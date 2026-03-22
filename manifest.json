@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Agentic AI Conversation",
-  "version": "1.1",
-  "description": "Multi-AI discussion workspace in your sidebar",
-  "permissions": ["sidePanel", "storage", "tabs", "scripting"],
+  "version": "1.2",
+  "description": "Multi-AI discussion workspace, bridge runs in background",
+  "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": [
     "http://localhost/*",
     "https://localhost/*",
@@ -22,7 +22,7 @@
     ]
   },
   "action": {
-    "default_title": "Open Agentic AI Conversation",
+    "default_title": "Agentic AI Conversation",
     "default_icon": {
       "16": "assets/icon16.png",
       "48": "assets/icon48.png",
@@ -31,9 +31,6 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "side_panel": {
-    "default_path": "index.html"
   },
   "icons": {
     "16": "assets/icon16.png",

@@ -14,6 +14,7 @@ A system for sending a single message to **multiple AI chatbots** (ChatGPT, Clau
 - The **Chrome Extension** runs silently in the background as a relay/bridge
 - The extension scans for open AI tabs, injects messages into them, captures responses, and sends them back to the web UI
 - The user never needs to interact with the extension UI directly
+- **No side panel required.** The bridge logic runs entirely in the background service worker.
 
 ## Architecture
 
@@ -32,24 +33,12 @@ A system for sending a single message to **multiple AI chatbots** (ChatGPT, Clau
 ┌──────────────────────────────────────────────────┐
 │  background.js (Service Worker)                  │
 │                                                  │
-│  Central hub. Routes messages between:           │
-│  • Web UI  ←→  Side Panel Relay                  │
-│                                                  │
-│  Manages two ports:                              │
-│  • 'webui-bridge'      (from web UI)             │
-│  • 'sidepanel-bridge'  (from relay.js)           │
-└──────────────────────────────────────────────────┘
-              ▲                              │
-              │ Port: 'sidepanel-bridge'     │
-              │                              ▼
-┌──────────────────────────────────────────────────┐
-│  relay.js (loaded in extension side panel)        │
-│                                                  │
-│  The actual bridge logic:                        │
+│  Central hub + relay logic combined:             │
+│  • Receives commands from Web UI                 │
 │  • Scans browser tabs for AI chat pages          │
 │  • Injects messages via chrome.scripting API     │
 │  • Polls for AI responses                        │
-│  • Sends responses back via port                 │
+│  • Sends responses back to Web UI via port       │
 └──────────────────────────────────────────────────┘
               │
               │ chrome.tabs.query()
@@ -69,27 +58,24 @@ A system for sending a single message to **multiple AI chatbots** (ChatGPT, Clau
 Web UI:  user types message, clicks Send
   → port.postMessage({ type: 'ai_command', payload: { memberId, message, ... } })
     → background.js receives on webui-bridge port
-      → forwards to sidepanel-bridge port
-        → relay.js: injects message into AI tab via executeScript
-          → AI tab: types message, clicks send button
+      → executes directly: injects message into AI tab via executeScript
+        → AI tab: types message, clicks send button
 ```
 
 ### 2. AI responds (AI tabs → Web UI)
 
 ```
 AI tab:  generates response text
-  → relay.js: polls response selector, detects stable text
-    → port.postMessage({ type: 'response', data: { responseType: 'ai_response', ... } })
-      → background.js receives on sidepanel-bridge port
-        → forwards to webui-bridge port
-          → Web UI: displays response in session window
+  → background.js: polls response selector, detects stable text
+    → port.postMessage to webui-bridge port
+      → Web UI: displays response in session window
 ```
 
 ### 3. Tab scanning (discover which AI tabs are open)
 
 ```
 Web UI:  user clicks "Scan for AI Tabs"
-  → relay.js: chrome.tabs.query() for each platform's URL patterns
+  → background.js: chrome.tabs.query() for each platform's URL patterns
     → returns list of detected AI tabs
       → Web UI: renders available AI members in sidebar
 ```
@@ -99,13 +85,12 @@ Web UI:  user clicks "Scan for AI Tabs"
 | File | Role | Key Responsibility |
 |------|------|-------------------|
 | `web-ui.html` | **Primary UI** | Full-screen interface served from localhost. User interacts here. |
-| `background.js` | **Service Worker** | Central message hub. Routes between web UI port and relay port. |
-| `relay.js` | **Bridge Logic** | Scans tabs, injects messages into AI pages, captures responses. |
-| `index.html` | **Side Panel** | Extension panel that loads `relay.js`. Must be open for bridge to work. |
-| `platforms.js` | **Platform Config** | URL patterns and CSS selectors for each AI chatbot. |
-| `script.js` | **Side Panel UI** | UI logic for the extension's own side panel (secondary). |
+| `background.js` | **Service Worker + Relay** | Central message hub + bridge logic. Scans tabs, injects messages, captures responses. |
+| `platforms.js` | **Platform Config** | URL patterns and CSS selectors for each AI chatbot (used by web-ui). |
 | `manifest.json` | **Extension Config** | Permissions, externally_connectable, service worker registration. |
 | `syntax-highlight.js` | **Utility** | Code block syntax highlighting for AI responses. |
+| `index.html` | **Legacy Side Panel** | Extension panel (no longer required for bridge to work). |
+| `script.js` | **Legacy Side Panel UI** | UI logic for the extension's own side panel (secondary, optional). |
 
 ## Supported AI Platforms
 
@@ -128,23 +113,12 @@ All communication uses **Chrome port-based messaging** (`chrome.runtime.connect`
 | Port Name | Direction | Purpose |
 |-----------|-----------|---------|
 | `webui-bridge` | Web UI ↔ Background | Commands from UI, responses back to UI |
-| `sidepanel-bridge` | Relay ↔ Background | Commands to relay, responses from relay |
 
 ### Message Formats
 
 **Web UI → Background:**
 ```js
 { target: 'background', id: 'wui_123_0', type: 'ping' | 'scan_tabs' | 'ai_command', payload: {...} }
-```
-
-**Background → Relay (forwarded):**
-```js
-{ target: 'background', id: 'wui_123_0', type: 'scan_tabs' | 'ai_command', payload: {...} }
-```
-
-**Relay → Background:**
-```js
-{ type: 'response', data: { id: 'wui_123_0', responseType: 'tab_scan' | 'ai_response', data: ... } }
 ```
 
 **Background → Web UI:**
@@ -156,7 +130,7 @@ All communication uses **Chrome port-based messaging** (`chrome.runtime.connect`
 
 - **`externally_connectable`**: Manifest setting that allows the localhost web page to connect to the extension using `chrome.runtime.connect(EXTENSION_ID)`
 - **`onConnect` vs `onConnectExternal`**: Internal extension pages use `onConnect`, external pages (localhost) use `onConnectExternal`. Both are handled by the same `handlePortConnection` function in `background.js`
-- **`chrome.scripting.executeScript`**: Used by relay.js to inject JavaScript into AI chat tabs to type messages and read responses
+- **`chrome.scripting.executeScript`**: Used by background.js to inject JavaScript into AI chat tabs to type messages and read responses
 - **Platform selectors**: Each AI platform has CSS selectors for its input box, send button, and response container defined in `platforms.js`
 
 ## Setup & Usage
@@ -181,19 +155,18 @@ All communication uses **Chrome port-based messaging** (`chrome.runtime.connect`
 
 ### Use
 
-1. **Open side panel**: Click the extension icon in Chrome toolbar (required, keeps the bridge alive)
-2. **Open AI tabs**: Open ChatGPT, Claude, Gemini, Grok, or Perplexity in separate tabs
-3. **Scan**: Click "Scan for AI Tabs" in the web UI sidebar
-4. **Select**: Toggle which AIs to include in the conversation
-5. **Send**: Type a message and hit Send. All selected AIs receive it simultaneously.
-6. **View**: Responses appear in side-by-side session windows
+1. **Open AI tabs**: Open ChatGPT, Claude, Gemini, Grok, or Perplexity in separate tabs
+2. **Scan**: Click "Scan for AI Tabs" in the web UI sidebar
+3. **Select**: Toggle which AIs to include in the conversation
+4. **Send**: Type a message and hit Send. All selected AIs receive it simultaneously.
+5. **View**: Responses appear in side-by-side session windows
 
 ### Important Notes
 
-- The **side panel must be open** for the bridge to function (relay.js runs there)
 - AI tabs must be **open and logged in** before scanning
 - The extension ID is hardcoded in `web-ui.html` as `EXTENSION_ID` constant
 - If the extension is reloaded, the ID may change, requiring an update in `web-ui.html`
+- **No side panel needed.** The bridge runs entirely in the background service worker.
 
 ## For Developers / Agents
 
@@ -218,13 +191,13 @@ Add an entry to `platforms.js`:
 ### Debugging
 
 - **Service Worker console**: `chrome://extensions` → click "Inspect views: service worker"
-- **Side Panel console**: Right-click the side panel → Inspect
 - **Web UI console**: Standard browser DevTools (F12)
-- Look for `[SW]` prefixed logs in service worker, `[Bridge]` in relay.js
+- Look for `[SW]` prefixed logs in service worker
 
 ### Architecture Rules
 
 - **Never put primary UI logic in the extension.** The extension is purely a bridge.
-- **All user-facing features go in `web-ui.html`.** The extension side panel is secondary.
+- **All user-facing features go in `web-ui.html`.** The extension is secondary.
 - **Communication is port-based.** Do not use `chrome.runtime.sendMessage` for web UI communication, use ports (`chrome.runtime.connect`).
 - **Platform configs are data, not code.** Adding a new AI should only require updating `platforms.js`.
+- **The bridge runs in the background.** No side panel or popup is required for the extension to work.
