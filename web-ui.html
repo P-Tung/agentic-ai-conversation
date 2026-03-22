@@ -230,11 +230,8 @@
       sidebarOpen: true,
       extensionAvailable: false,
       msgIdCounter: 0,
-      isMock: true // Set to true for browser testing without extension
+      isMock: false // Reverted to false for production extension usage
     };
-
-    // Toggle mock mode if needed
-    if (window.location.protocol === 'file:' || window.location.hostname === 'localhost') state.isMock = true;
 
     function saveState() {
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -414,9 +411,9 @@
           t.tabId = found ? found.tabId : null; 
         });
         
-        // Handle Mock data injection if offline
+        // Reverted: No longer injecting mock connected status
         if (state.isMock) {
-          state.tabs.forEach(t => t.connected = true);
+          // Keep mock selection logic here only if isMock is manually toggled
         }
 
         // Ensure all active members have a slot in displayOrder
@@ -716,7 +713,7 @@
     }
 
     function checkAllReady() {
-      const readyTabIds = state.tabs.filter(t => t.connected || state.isMock).map(t => t.id);
+      const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
       readyTabIds.forEach(id => {
         if (!state.activeMembers.includes(id)) {
           state.activeMembers.push(id);
