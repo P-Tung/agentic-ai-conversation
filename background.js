@@ -75,6 +75,36 @@ const PLATFORMS = [
       response: ['.prose', '[class*="answer"]'],
     },
   },
+  {
+    id: 'kimi',
+    name: 'Kimi',
+    urlPatterns: ['*://www.kimi.com/*', '*://*.kimi.com/*'],
+    selectors: {
+      input: ['.chat-input-editor', 'div[role="textbox"]'],
+      sendBtn: ['.send-button-container', 'button:has(svg[class*="send"])'],
+      response: ['.markdown-container'],
+    },
+  },
+  {
+    id: 'zai',
+    name: 'Z.ai',
+    urlPatterns: ['*://chat.z.ai/*'],
+    selectors: {
+      input: ['#chat-input'],
+      sendBtn: ['#send-message-button'],
+      response: ['.markdown-prose'],
+    },
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    urlPatterns: ['*://agent.minimax.io/*'],
+    selectors: {
+      input: ['.tiptap-editor', 'div[contenteditable="true"]'],
+      sendBtn: ['button:has(svg)', 'div:has(svg)'],
+      response: ['.content_wrap', '.markdown-body'],
+    },
+  },
 ];
 
 // =========================================================

@@ -12,7 +12,11 @@
     "*://gemini.google.com/*",
     "*://x.com/*",
     "*://grok.com/*",
-    "*://www.perplexity.ai/*"
+    "*://www.perplexity.ai/*",
+    "*://www.kimi.com/*",
+    "*://*.kimi.com/*",
+    "*://chat.z.ai/*",
+    "*://agent.minimax.io/*"
   ],
   "externally_connectable": {
     "matches": [
