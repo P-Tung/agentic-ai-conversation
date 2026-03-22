@@ -542,6 +542,7 @@
       else state.activeMembers.push(id);
       renderTabs();
       renderSessions();
+      saveState();
       chatInput.oninput && chatInput.oninput();
     }
 
@@ -554,6 +555,7 @@
       if (confirm('Clear conversation?')) {
         state.messages = [];
         state.status = 'idle';
+        saveState();
         render();
       }
     }
@@ -590,11 +592,34 @@
       }
     }
 
-    // --- Init ---
-    function init() {
-      updateTheme();
+      function saveState() {
+        if (state.extensionAvailable && typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.set({ ai_council_state: {
+            mode: state.mode,
+            activeMembers: state.activeMembers,
+            theme: state.theme,
+            config: state.config
+          }});
+        }
+      }
 
-      // Connect to extension via port (replaces polling-based probeExtension)
+    // --- Init ---
+    async function init() {
+      // Restore state if available
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        try {
+          const result = await new Promise(r => chrome.storage.local.get(['ai_council_state'], r));
+          if (result && result.ai_council_state) {
+            const saved = result.ai_council_state;
+            if (saved.mode) state.mode = saved.mode;
+            if (saved.activeMembers) state.activeMembers = saved.activeMembers;
+            if (saved.theme) state.theme = saved.theme;
+            if (saved.config) state.config = { ...state.config, ...saved.config };
+          }
+        } catch (e) { console.warn('Failed to restore state:', e); }
+      }
+
+      updateTheme();
       connectToExtension();
 
       // Event listeners
@@ -619,9 +644,13 @@
         }
       };
 
-      responseTimeoutSlider.oninput = (e) => { state.config.responseTimeout = parseInt(e.target.value); responseTimeoutValue.textContent = state.config.responseTimeout; };
-      councilModeBtn.onclick = () => { state.mode = 'council'; renderModeToggle(); };
-      debateModeBtn.onclick = () => { state.mode = 'debate'; renderModeToggle(); };
+      responseTimeoutSlider.oninput = (e) => { 
+        state.config.responseTimeout = parseInt(e.target.value); 
+        responseTimeoutValue.textContent = state.config.responseTimeout; 
+        saveState();
+      };
+      councilModeBtn.onclick = () => { state.mode = 'council'; saveState(); renderModeToggle(); };
+      debateModeBtn.onclick = () => { state.mode = 'debate'; saveState(); renderModeToggle(); };
 
       // Helper to open tab without stealing focus
       window.openTabBackground = (url) => {
@@ -639,6 +668,8 @@
           window.open(url, '_blank');
         }
       };
+
+
 
       render();
       lucide.createIcons();
