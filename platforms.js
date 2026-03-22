@@ -12,6 +12,7 @@ const PLATFORMS = [
       input: ['#prompt-textarea', 'div[contenteditable="true"]'],
       sendBtn: ['button[data-testid="send-button"]'],
       response: ['.markdown'],
+      exclude: ['.thought-block', 'details']
     },
   },
   {
@@ -36,6 +37,7 @@ const PLATFORMS = [
         '.font-claude-message',
         'div[class*="prose"]',
       ],
+      exclude: ['details']
     },
   },
   {
@@ -48,6 +50,7 @@ const PLATFORMS = [
       input: ['div.ql-editor', 'textarea'],
       sendBtn: ['.send-button', 'button[aria-label="Send message"]'],
       response: ['message-content'],
+      exclude: []
     },
   },
   {
@@ -64,6 +67,7 @@ const PLATFORMS = [
         'button[aria-label="Grok something"]',
       ],
       response: ['.response-content-markdown', '.message-content', '.message-text'],
+      exclude: ['.thought']
     },
   },
   {
@@ -76,6 +80,7 @@ const PLATFORMS = [
       input: ['div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
       sendBtn: ['button[aria-label="Submit"]', 'button[type="submit"]'],
       response: ['.prose', '[class*="answer"]'],
+      exclude: []
     },
   },
   {
@@ -88,6 +93,7 @@ const PLATFORMS = [
       input: ['.chat-input-editor', 'div[role="textbox"]'],
       sendBtn: ['.send-button-container', 'button:has(svg[class*="send"])'],
       response: ['.markdown-container'],
+      exclude: []
     },
   },
   {
@@ -100,6 +106,16 @@ const PLATFORMS = [
       input: ['#chat-input'],
       sendBtn: ['#send-message-button'],
       response: ['.markdown-prose'],
+      exclude: [
+        '.thought-process', 
+        '.thinking-block', 
+        '.thinking-process', 
+        '.thought-container',
+        '.thought-block',
+        'details',
+        '[class*="thought"]',
+        '[class*="thinking"]'
+      ]
     },
   },
   {
@@ -112,6 +128,7 @@ const PLATFORMS = [
       input: ['.tiptap-editor', 'div[contenteditable="true"]'],
       sendBtn: ['button:has(svg)', 'div:has(svg)'],
       response: ['.content_wrap', '.markdown-body'],
+      exclude: []
     },
   },
 ];

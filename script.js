@@ -340,6 +340,9 @@ function renderMessagesForSession(memberId, container) {
       return;
     }
 
+    const isAi = msg.senderType === 'ai';
+    const hasThought = isAi && msg.thought && msg.thought.trim().length > 0;
+
     const msgEl = document.createElement('div');
     msgEl.className = `flex gap-2.5 max-w-[95%] ${isHuman ? 'ml-auto flex-row-reverse' : 'mr-auto'}`;
     
@@ -348,12 +351,31 @@ function renderMessagesForSession(memberId, container) {
       ? 'bg-indigo-600 text-white rounded-tr-sm' 
       : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm';
 
+    let thoughtHtml = '';
+    if (hasThought) {
+      const thoughtId = `thought-${msg.id}`;
+      thoughtHtml = `
+        <div class="thought-container mb-2 overflow-hidden border border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 transition-all duration-300">
+          <button class="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors uppercase tracking-wider text-left" 
+                  onclick="const el = document.getElementById('${thoughtId}'); el.classList.toggle('hidden'); this.querySelector('.chevron-icon').classList.toggle('rotate-180')">
+            <i data-lucide="brain" class="w-3.5 h-3.5"></i>
+            Thought Process
+            <i data-lucide="chevron-down" class="chevron-icon w-3 h-3 ml-auto transition-transform"></i>
+          </button>
+          <div id="${thoughtId}" class="thought-content hidden px-3 pb-3 text-[11px] text-gray-500 dark:text-gray-400 border-t border-gray-100/50 dark:border-gray-700/30 pt-2 leading-relaxed italic">
+            ${msg.thought}
+          </div>
+        </div>
+      `;
+    }
+
     msgEl.innerHTML = `
       <div class="flex flex-col ${isHuman ? 'items-end' : 'items-start'}">
         <div class="flex items-baseline gap-1.5 mb-0.5 px-0.5">
           <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">${isHuman ? 'You' : msg.sender}</span>
         </div>
         <div class="px-3 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm ${bubbleColor}">
+          ${thoughtHtml}
           ${bubbleContent}
         </div>
       </div>
@@ -623,24 +645,106 @@ async function interactWithAI(platformId, message, selectors, responseTimeout) {
           // Interval: 500ms → maxAttempts = responseTimeout (seconds) × 2
           // If responseTimeout is 0, we wait indefinitely
           const POLL_INTERVAL_MS = 500;
-          const maxAttempts = responseTimeout > 0 ? responseTimeout * (1000 / POLL_INTERVAL_MS) : Infinity;
+          const maxAttempts = responseTimeout > 0 ? (responseTimeout * (1000 / POLL_INTERVAL_MS)) : Infinity;
           let attempts = 0;
           let previousText = '';
+
+          // --- Dynamic Extraction Logic (1-for-all) ---
+          const findResponse = () => {
+            // 1. Find the prompt element by text content (highly reliable for sent messages)
+            const allElements = document.querySelectorAll('div, p, span, [data-testid*="message"]');
+            let promptEl = null;
+            // Clean message for comparison
+            const cleanMsg = message.trim();
+            for (let i = allElements.length - 1; i >= 0; i--) {
+              const el = allElements[i];
+              if (el.innerText?.trim() === cleanMsg && !el.querySelector('div, p')) {
+                promptEl = el;
+                break;
+              }
+            }
+
+            // 2. Identify the response block following the prompt
+            let responseContainer = null;
+            if (promptEl) {
+              // Traverse up to find the message wrapper
+              let current = promptEl;
+              let depth = 0;
+              while (current && depth < 10) {
+                const next = current.nextElementSibling;
+                if (next) {
+                  // If we find a direct sibling, it's likely the response or the next message row
+                  responseContainer = next;
+                  break;
+                }
+                current = current.parentElement;
+                depth++;
+              }
+            }
+
+            // Fallback to selectors if dynamic discovery fails
+            if (!responseContainer) {
+              for (const sel of selectors.response) {
+                const els = document.querySelectorAll(sel);
+                if (els.length > 0) { responseContainer = els[els.length - 1]; break; }
+              }
+            }
+
+            if (!responseContainer) return null;
+
+            // 3. Process and Split (Thought vs Answer)
+            const clone = responseContainer.cloneNode(true);
+            
+            // Look for explicit thought elements first
+            let thoughtHTML = '';
+            const thoughtSels = selectors.exclude || ['.thought', '.thinking', 'details', '.thought-block'];
+            thoughtSels.forEach(s => {
+              clone.querySelectorAll(s).forEach(t => {
+                thoughtHTML += t.innerHTML;
+                t.remove();
+              });
+            });
+
+            // If no explicit thought, check for "Thought Process" headings/text
+            if (!thoughtHTML) {
+               const headings = Array.from(clone.querySelectorAll('*')).filter(el => 
+                 el.innerText?.toLowerCase().includes('thought process') && el.children.length === 0
+               );
+               if (headings.length > 0) {
+                 // Take the heading and its siblings until the next major block
+                 const h = headings[0];
+                 thoughtHTML = h.outerHTML;
+                 let next = h.nextElementSibling;
+                 while (next && !next.innerText?.includes('\n')) {
+                    thoughtHTML += next.outerHTML;
+                    const toRemove = next;
+                    next = next.nextElementSibling;
+                    toRemove.remove();
+                 }
+                 h.remove();
+               }
+            }
+
+            return {
+              thought: thoughtHTML.trim(),
+              answer: clone.innerHTML.trim(),
+              rawText: clone.innerText.trim()
+            };
+          };
+
           const checkResponse = setInterval(() => {
             attempts++;
-            let responseText = '';
-            for (const sel of selectors.response) {
-              const els = document.querySelectorAll(sel);
-              if (els.length > 0) { responseText = els[els.length - 1].innerText; break; }
-            }
-            if (responseText && responseText === previousText && attempts > 4) {
+            const result = findResponse();
+            const currentText = result?.rawText || '';
+
+            if (currentText && currentText === previousText && attempts > 4) {
               clearInterval(checkResponse);
-              resolve(responseText);
+              resolve(result); // Return the full object now
             } else if (attempts > maxAttempts) {
               clearInterval(checkResponse);
-              resolve(responseText || `[Error]: No response received from ${platformId}.`);
+              resolve(result || `[Error]: No response received from ${platformId}.`);
             }
-            previousText = responseText;
+            previousText = currentText;
           }, 500);
         };
 
@@ -684,17 +788,20 @@ async function runBroadcast(text, parentMsgId = null) {
     render();
 
     try {
-      const responseText = await getAIResponse(member, text);
+      const response = await getAIResponse(member, text);
       // Remove the waiting message
       state.messages = state.messages.filter(m => m.id !== waitingId);
       
       // Add to local state and relay to web-ui
       const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const isStruct = typeof response === 'object' && response !== null;
+      
       const aiMsg = {
         id: msgId,
         sender: member.name,
         senderType: 'ai',
-        text: responseText,
+        text: isStruct ? response.answer : response,
+        thought: isStruct ? response.thought : null,
         timestamp: Date.now(),
         inReplyTo: parentMsgId,
       };

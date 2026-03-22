@@ -93,7 +93,20 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
             let responseText = '';
             for (const sel of (selectors.response || [])) {
               const els = document.querySelectorAll(sel);
-              if (els.length > 0) { responseText = els[els.length - 1].innerText; break; }
+              if (els.length > 0) {
+                const lastEl = els[els.length - 1];
+                const clone = lastEl.cloneNode(true);
+                
+                if (selectors.exclude && Array.isArray(selectors.exclude)) {
+                  selectors.exclude.forEach(exSel => {
+                    clone.querySelectorAll(exSel).forEach(exEl => exEl.remove());
+                  });
+                }
+                clone.querySelectorAll('details').forEach(d => d.remove());
+                
+                responseText = clone.innerText;
+                break;
+              }
             }
             if (responseText && responseText === previousText && attempts > 4) {
               clearInterval(checkResponse); resolve(responseText);
