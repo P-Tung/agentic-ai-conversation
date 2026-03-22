@@ -160,6 +160,12 @@ async function getAIResponseRelay(member, message, responseTimeout = 30) {
   if (!member.tabId) return '[Error] Tab not found.';
   const platform = PLATFORMS.find(p => p.id === member.id);
   if (!platform) return `[Error] No platform config for ${member.id}.`;
+  
+  // Try to update tab status without making it active to avoid focus stealing
+  try {
+    await chrome.tabs.update(member.tabId, { active: false });
+  } catch (e) { /* ignore */ }
+
   return new Promise((resolve) => {
     chrome.scripting.executeScript({
       target: { tabId: member.tabId },
@@ -229,6 +235,8 @@ function handleCommand(msg) {
     scanTabsRelay().then(tabs => postResponseToWebUI({ id, responseType: 'tab_scan', data: tabs }));
   } else if (type === 'ai_command') {
     handleAICommand(id, payload);
+  } else if (type === 'create_tab') {
+    chrome.tabs.create({ url: payload.url, active: false });
   }
 }
 

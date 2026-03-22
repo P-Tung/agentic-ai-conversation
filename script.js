@@ -223,7 +223,7 @@ function renderTabs() {
             </div>
           </div>
         </div>
-        <button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="window.open('${tab.homeUrl}', '_blank'); event.stopPropagation();">
+        <button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="chrome.tabs.create({url: '${tab.homeUrl}', active: false}); event.stopPropagation();">
           Open
         </button>
       `;
@@ -542,11 +542,13 @@ async function getAIResponse(member, userMessage) {
   const platform = PLATFORMS.find(p => p.id === member.id);
   if (!platform) return `[Error]: No platform config for ${member.name}.`;
 
-  // Activate the AI tab — background tabs have throttled JS and may block DOM interactions
+  // Background tabs have throttled JS and may block DOM interactions, 
+  // but we try to avoid stealing focus. 
+  // We'll update the tab WITHOUT making it active.
   try {
-    await chrome.tabs.update(member.tabId, { active: true });
-    await new Promise(r => setTimeout(r, 300)); // wait for focus
-  } catch { /* proceed anyway if tab activation fails */ }
+    await chrome.tabs.update(member.tabId, { active: false });
+    await new Promise(r => setTimeout(r, 100));
+  } catch { /* proceed anyway if tab fails to update */ }
 
   return new Promise((resolve) => {
     chrome.scripting.executeScript({

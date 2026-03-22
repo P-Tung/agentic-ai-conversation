@@ -344,6 +344,10 @@
       });
     }
 
+    function openTabBackground(url) {
+      sendToExtension('create_tab', { url });
+    }
+
     function handleRelayResponse(msg) {
       const { responseType, data } = msg;
 
@@ -421,7 +425,7 @@
           el.onclick = () => toggleMember(tab.id);
         } else {
           el.className = `flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-75 mb-2`;
-          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div><div class="text-xs text-red-500 dark:text-red-400">Not Ready</div></div></div><button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="window.open('${tab.homeUrl}', '_blank'); event.stopPropagation();">Open</button>`;
+          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div><div class="text-xs text-red-500 dark:text-red-400">Not Ready</div></div></div><button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); event.stopPropagation();">Open</button>`;
         }
         tabsList.appendChild(el);
       });
@@ -614,6 +618,23 @@
       responseTimeoutSlider.oninput = (e) => { state.config.responseTimeout = parseInt(e.target.value); responseTimeoutValue.textContent = state.config.responseTimeout; };
       councilModeBtn.onclick = () => { state.mode = 'council'; renderModeToggle(); };
       debateModeBtn.onclick = () => { state.mode = 'debate'; renderModeToggle(); };
+
+      // Helper to open tab without stealing focus
+      window.openTabBackground = (url) => {
+        // Always try to use the extension's background script to create the tab
+        // as it has the 'tabs' permission and can reliably create background tabs.
+        if (extensionPort) {
+          sendToExtension('create_tab', { url }).catch(() => {
+            // Very rare fallback
+            window.open(url, '_blank');
+          });
+        } else if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+          chrome.tabs.create({ url, active: false });
+        } else {
+          // Fallback if extension isn't connected yet
+          window.open(url, '_blank');
+        }
+      };
 
       render();
       lucide.createIcons();
