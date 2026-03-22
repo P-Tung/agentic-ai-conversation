@@ -363,6 +363,7 @@
         // Re-render sessions only if active members changed
         if (state.activeMembers.length !== origCount) {
           renderSessions();
+          saveState();
         }
       }
 
@@ -428,7 +429,7 @@
     }
 
     function renderSessions() {
-      const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
+      const activeTabs = state.tabs.filter(t => t.connected && state.activeMembers.includes(t.id));
       const count = activeTabs.length;
       if (count === 0) {
         sessionsContainer.innerHTML = `<div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none"><div class="w-14 h-14 rounded-2xl flex items-center justify-center"><i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i></div><div class="space-y-1"><p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p><p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p></div></div>`;

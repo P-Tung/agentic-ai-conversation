@@ -236,7 +236,7 @@ function renderTabs() {
 }
 
 function renderSessions() {
-  const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
+  const activeTabs = state.tabs.filter(t => t.connected && state.activeMembers.includes(t.id));
   const count = activeTabs.length;
 
   if (count === 0) {
