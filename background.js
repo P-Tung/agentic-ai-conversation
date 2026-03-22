@@ -130,7 +130,6 @@ async function getAIResponseRelay(member, message, responseTimeout = 30) {
   if (!member.tabId) return '[Error] Tab not found.';
   const platform = PLATFORMS.find(p => p.id === member.id);
   if (!platform) return `[Error] No platform config for ${member.id}.`;
-  try { await chrome.tabs.update(member.tabId, { active: true }); await new Promise(r => setTimeout(r, 300)); } catch { /* proceed */ }
   return new Promise((resolve) => {
     chrome.scripting.executeScript({
       target: { tabId: member.tabId },
