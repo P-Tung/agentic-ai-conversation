@@ -93,7 +93,7 @@ function parseMarkdown(text) {
 }
 
 // --- Extension Bridge ---
-const EXTENSION_ID = 'capcgedagknfpheplofhfallbkifjnob';
+const EXTENSION_ID = 'ihhilpmigmaajhpgmnckcjdfgideidpa';
 const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id === EXTENSION_ID);
 let extensionPort = null;
 const pendingCallbacks = new Map();

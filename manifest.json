@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Agentic AI Conversation",
-  "version": "1.2",
+  "version": "1.2.1",
   "description": "Multi-AI discussion workspace, bridge runs in background",
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
     "http://localhost/*",
     "https://localhost/*",
