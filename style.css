@@ -1,0 +1,160 @@
+:root {
+  --bulma-primary: #4f46e5; /* Indigo 600 */
+  --bulma-primary-invert: #ffffff;
+  --bulma-link: #6366f1; /* Indigo 500 */
+  --bulma-info: #3b82f6; /* Blue 500 */
+  --bulma-success: #10b981; /* Emerald 500 */
+  --bulma-warning: #f59e0b; /* Amber 500 */
+  --bulma-danger: #ef4444; /* Red 500 */
+  --bulma-body-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --bulma-radius: 12px;
+  --bulma-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --panel-bg: #ffffff;
+  --panel-bg-alt: #f9fafb;
+}
+
+[data-theme="dark"] {
+  --bulma-body-background-color: #030712; /* gray-950 */
+  --bulma-text: #f3f4f6; /* gray-100 */
+  --bulma-border: #1f2937; /* gray-800 */
+  --bulma-card-background-color: #111827; /* gray-900 */
+  --bulma-box-background-color: #111827;
+  --bulma-input-background-color: #111827;
+  --bulma-input-color: #f3f4f6;
+  --bulma-input-border-color: #1f2937;
+  --panel-bg: #111827;
+  --panel-bg-alt: #1f2937;
+}
+
+
+/* Premium Glassmorphism and Effects */
+.bg-white-opacity {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .bg-white-opacity {
+  background: rgba(17, 24, 39, 0.8) !important;
+  backdrop-filter: blur(8px);
+}
+
+.bg-light-opacity {
+  background: rgba(243, 244, 246, 0.5);
+}
+
+[data-theme="dark"] .bg-light-opacity {
+  background: rgba(3, 7, 18, 0.5);
+}
+
+.transition-all {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-translate-y:hover {
+  transform: translateY(-2px);
+}
+
+.border-bottom { border-bottom: 1px solid var(--bulma-border); }
+.border-top { border-top: 1px solid var(--bulma-border); }
+.border-right { border-right: 1px solid var(--bulma-border); }
+.border-left { border-left: 1px solid var(--bulma-border); }
+
+.rounded-xl { border-radius: 12px; }
+.rounded-2xl { border-radius: 16px; }
+
+.shadow-xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.shadow-sm { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+.status-dot.online { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+.status-dot.offline { background: #ef4444; }
+
+/* Custom Checkbox */
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--bulma-border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background: var(--bulma-card-background-color);
+}
+.custom-checkbox-checked {
+  background: var(--bulma-primary);
+  border-color: var(--bulma-primary);
+  color: white;
+}
+
+
+/* Custom UI Tweaks */
+.session-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Premium Card Hover */
+.box.is-premium {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.box.is-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Code Highlighting overrides for dark mode */
+.theme-dark .hl-keyword  { color: #a78bfa; }
+.theme-dark .hl-string   { color: #4ade80; }
+.theme-dark .hl-comment  { color: #9ca3af; }
+.theme-dark .hl-number   { color: #fbbf24; }
+.theme-dark .hl-function { color: #60a5fa; }
+.theme-dark .hl-type     { color: #22d3ee; }
+.theme-dark .hl-attr     { color: #c084fc; }
+.theme-dark .hl-tag      { color: #f87171; }
+.theme-dark .hl-builtin  { color: #22d3ee; }
+
+/* Grid layout for sessions */
+.sessions-grid-1 { grid-template-columns: 1fr; }
+.sessions-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.sessions-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.sessions-grid-4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.sessions-grid-5, .sessions-grid-6 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+
+.session-window {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+@media (max-width: 768px) {
+  .sessions-grid-2, .sessions-grid-3, .sessions-grid-4, .sessions-grid-5, .sessions-grid-6 {
+    grid-template-columns: 1fr;
+  }
+}

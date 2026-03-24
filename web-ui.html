@@ -1,245 +1,154 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Council of AI</title>
-    <link rel="stylesheet" href="output.css">
-    <style>
-      .hl-keyword  { color: #7c3aed; }
-      .hl-string   { color: #15803d; }
-      .hl-comment  { color: #6b7280; font-style: italic; }
-      .hl-number   { color: #b45309; }
-      .hl-function { color: #1d4ed8; }
-      .hl-type     { color: #0e7490; }
-      .hl-attr     { color: #9333ea; }
-      .hl-tag      { color: #b91c1c; }
-      .hl-builtin  { color: #0e7490; }
-      .dark .hl-keyword  { color: #a78bfa; }
-      .dark .hl-string   { color: #4ade80; }
-      .dark .hl-comment  { color: #9ca3af; }
-      .dark .hl-number   { color: #fbbf24; }
-      .dark .hl-function { color: #60a5fa; }
-      .dark .hl-type     { color: #22d3ee; }
-      .dark .hl-attr     { color: #c084fc; }
-      .dark .hl-tag      { color: #f87171; }
-      .dark .hl-builtin  { color: #22d3ee; }
-      .btn-amber { background:rgba(245,158,11,0.12); color:#b45309; }
-      .btn-amber:hover { background:rgba(245,158,11,0.22); }
-      .dark .btn-amber { background:rgba(245,158,11,0.15); color:#fbbf24; }
-      .dark .btn-amber:hover { background:rgba(245,158,11,0.25); }
-      .btn-red { background:rgba(239,68,68,0.10); color:#dc2626; }
-      .btn-red:hover { background:rgba(239,68,68,0.20); }
-      .dark .btn-red { background:rgba(239,68,68,0.15); color:#f87171; }
-      .dark .btn-red:hover { background:rgba(239,68,68,0.25); }
-      @keyframes spin-cw { to { transform: rotate(360deg); } }
-      .scanning svg { animation: spin-cw 0.7s linear infinite; }
-
-      #sidebar { transition: width 0.3s ease-in-out, transform 0.3s ease-in-out; }
-      #sidebar.closed { width: 0 !important; transform: translateX(-100%); }
-      #sidebar.open { width: 320px !important; transform: translateX(0); }
-
-      /* Premium Minimized Tray Styling */
-      .minimized-item {
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid rgba(229, 231, 235, 0.5);
-        min-width: 200px;
-        height: 48px;
-        border-radius: 12px;
-      }
-      .dark .minimized-item {
-        border-color: rgba(31, 41, 55, 0.5);
-      }
-      .minimized-item:hover {
-        background: rgba(99, 102, 241, 0.05);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        border-color: rgba(99, 102, 241, 0.3);
-      }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-      /* Custom Checkbox */
-      .custom-checkbox {
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
-        border: 2px solid #d1d5db; /* gray-300 */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        flex-shrink: 0;
-      }
-      .dark .custom-checkbox {
-        border-color: #4b5563; /* gray-600 */
-      }
-      .custom-checkbox-checked {
-        background-color: #4f46e5; /* indigo-600 */
-        border-color: #4f46e5 !important;
-        color: white;
-      }
-      .custom-checkbox i {
-        opacity: 0;
-        transform: scale(0.5);
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .custom-checkbox-checked i {
-        opacity: 1;
-        transform: scale(1);
-      }
-    </style>
+    <!-- Bulma CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="lucide.min.js"></script>
   </head>
-  <body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200">
-    <div id="app-container" class="flex h-[100dvh] w-full overflow-hidden relative">
+  <body class="is-clipped">
+    <div id="app-container" class="is-flex is-flex-direction-row" style="height: 100vh; width: 100vw; overflow: hidden;">
 
-      <!-- Sidebar Overlay (Mobile only) -->
-      <div id="sidebar-overlay" class="hidden absolute inset-0 bg-black/40 dark:bg-black/60 z-20 transition-opacity lg:!hidden"></div>
+      <!-- Sidebar Overlay (Mobile) -->
+      <div id="sidebar-overlay" class="is-hidden-desktop" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 30; display: none;"></div>
 
       <!-- Sidebar -->
-      <aside id="sidebar" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden fixed inset-y-0 left-0 z-30 lg:relative lg:translate-x-0 open">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
-          <h1 class="font-semibold text-lg flex items-center gap-2">
-            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i>
-            Agentic AI
+      <aside id="sidebar" class="is-flex is-flex-direction-column border-right transition-all" style="width: 320px; z-index: 40;">
+        <div class="px-5 py-4 is-flex is-align-items-center is-justify-content-space-between border-bottom">
+          <h1 class="title is-5 mb-0 is-flex is-align-items-center gap-2">
+            <i data-lucide="sparkles" class="has-text-primary"></i>
+            <span>Agentic AI</span>
           </h1>
-          <button id="close-sidebar" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Close Sidebar">
-            <i data-lucide="panel-left-close" class="w-5 h-5"></i>
+          <button id="close-sidebar" class="button is-ghost is-small is-hidden-desktop" title="Close Sidebar">
+            <i data-lucide="panel-left-close"></i>
           </button>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 space-y-6">
-          <!-- Extension Status -->
-          <section>
-            <div class="flex items-center justify-between mb-4 px-1">
-              <div class="flex items-center gap-2">
-                <button id="scan-tabs-btn" class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-all active:scale-95 group" title="Scan for AI Tabs">
-                  <i data-lucide="refresh-cw" class="w-4 h-4 group-[.scanning]:animate-spin"></i>
-                </button>
-                <div id="ext-status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)] border border-white/20 transition-all duration-300" title="Extension not connected"></div>
-              </div>
-              
-              <button id="check-all-ready-btn" class="flex items-center gap-2 text-[10px] font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 uppercase tracking-widest transition-colors group">
-                <span id="check-all-text">Check all ready</span>
-                <div id="check-all-checkbox" class="custom-checkbox !w-4 !h-4 group-hover:border-indigo-400">
-                </div>
+        <div class="p-5 is-flex-grow-1 is-overflow-y-auto no-scrollbar">
+          <!-- Extension Status & Check All -->
+          <div class="is-flex is-align-items-center is-justify-content-space-between mb-5">
+            <div class="is-flex is-align-items-center gap-3">
+              <button id="scan-tabs-btn" class="button is-small is-light is-rounded transition-all" title="Scan for AI Tabs">
+                <i data-lucide="refresh-cw"></i>
               </button>
+              <div id="ext-status-dot" class="status-dot" title="Extension Status"></div>
             </div>
-            <div id="tabs-list" class="space-y-2"></div>
-            <p id="no-tabs-msg" class="text-xs text-gray-500 dark:text-gray-400 italic text-center mt-3 hidden">
-              No AI tabs found.<br>Open ChatGPT, Claude, Gemini, Grok, or Perplexity.
+            
+            <button id="check-all-ready-btn" class="button is-ghost is-small is-uppercase has-text-weight-bold is-size-7 tracking-wider">
+              <span id="check-all-text">Check all ready</span>
+              <span id="check-all-checkbox" class="ml-2 border rounded" style="width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;"></span>
+            </button>
+          </div>
+
+          <!-- Tabs List -->
+          <div id="tabs-list" class="mb-6">
+            <!-- Dynamic items -->
+          </div>
+          <p id="no-tabs-msg" class="is-size-7 has-text-centered is-italic has-text-grey-light mb-6 is-hidden">
+            No AI tabs found.<br>Open ChatGPT, Claude, Gemini, Grok, or Perplexity.
+          </p>
+
+          <!-- Configuration Menu -->
+          <div class="menu">
+            <p class="menu-label is-uppercase is-size-7 has-text-weight-bold tracking-wider mb-3">
+              <i data-lucide="settings" class="is-size-7 mr-1"></i> Mode
             </p>
-          </section>
+            <div id="mode-toggle" class="buttons has-addons mb-5">
+              <button id="council-mode-btn" class="button is-small is-flex-grow-1 is-selected is-primary">Council</button>
+              <button id="debate-mode-btn" class="button is-small is-flex-grow-1">Debate</button>
+            </div>
 
-          <!-- Mode Toggle -->
-          <section>
-            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i data-lucide="settings" class="w-3.5 h-3.5"></i> Mode
-            </h2>
-            <div id="mode-toggle" class="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <button id="council-mode-btn" class="mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm">Council</button>
-              <button id="debate-mode-btn" class="mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors text-gray-500 dark:text-gray-400">Debate</button>
-            </div>
-          </section>
-
-          <!-- Configuration -->
-          <section id="debate-config-section" class="hidden space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                <span>Max Rounds</span>
-                <span id="max-rounds-value" class="text-indigo-500 font-mono">7</span>
-              </label>
-              <input id="max-rounds-slider" type="range" min="1" max="100" step="1" value="7" class="w-full accent-indigo-500">
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                <span>Max Debate Turns</span>
-                <span id="max-debate-turns-value" class="text-indigo-500 font-mono">5</span>
-              </label>
-              <input id="max-debate-turns-slider" type="range" min="1" max="100" step="1" value="5" class="w-full accent-indigo-500">
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Debate Instruction</label>
-              <textarea id="debate-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20" placeholder="Debate instructions..."></textarea>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Consensus Instruction</label>
-              <textarea id="consensus-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20" placeholder="Consensus instructions..."></textarea>
-            </div>
-          </section>
-
-          <!-- Settings -->
-          <section id="settings-section">
-            <h2 id="settings-title" class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Settings</h2>
-            <div class="space-y-4">
-              <div id="response-timeout-section">
-                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
-                  <span>Response Timeout</span>
-                  <span><span id="response-timeout-value" class="text-indigo-500 font-mono">30</span><span class="text-gray-400">s</span></span>
+            <div id="debate-config-section" class="is-hidden mb-5">
+              <div class="field mb-4">
+                <label class="label is-size-7 is-flex is-justify-content-space-between">
+                  <span>Max Rounds</span>
+                  <span id="max-rounds-value" class="has-text-primary">7</span>
                 </label>
-                <input id="response-timeout-slider" type="range" min="5" max="120" step="5" value="30" class="w-full accent-indigo-500">
+                <div class="control">
+                  <input id="max-rounds-slider" class="slider is-fullwidth is-primary is-small" step="1" min="1" max="100" value="7" type="range">
+                </div>
+              </div>
+              <div class="field mb-4">
+                <label class="label is-size-7 is-flex is-justify-content-space-between">
+                  <span>Max Debate Turns</span>
+                  <span id="max-debate-turns-value" class="has-text-primary">5</span>
+                </label>
+                <div class="control">
+                  <input id="max-debate-turns-slider" class="slider is-fullwidth is-primary is-small" step="1" min="1" max="100" value="5" type="range">
+                </div>
               </div>
             </div>
-          </section>
+
+            <div id="settings-section">
+              <p class="menu-label is-uppercase is-size-7 has-text-weight-bold tracking-wider mb-2">Settings</p>
+              <div id="response-timeout-section" class="field">
+                <label class="label is-size-7 is-flex is-justify-content-space-between">
+                  <span>Response Timeout</span>
+                  <span><span id="response-timeout-value" class="has-text-primary">30</span><span class="has-text-grey-light">s</span></span>
+                </label>
+                <div class="control">
+                  <input id="response-timeout-slider" class="slider is-fullwidth is-primary is-small" step="5" min="5" max="120" value="30" type="range">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-
       </aside>
 
       <!-- Main Chat Area -->
-      <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-950">
+      <main class="is-flex is-flex-direction-column is-flex-grow-1 is-min-width-0">
         <!-- Header -->
-        <header class="h-12 flex-shrink-0 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md z-10">
-          <div class="flex items-center gap-2">
-            <button id="open-sidebar" class="hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Open Sidebar">
-              <i data-lucide="panel-left-open" class="w-5 h-5"></i>
+        <header class="px-4 py-2 border-bottom is-flex is-align-items-center is-justify-content-space-between bg-white-opacity">
+          <div class="is-flex is-align-items-center gap-3">
+            <button id="open-sidebar" class="button is-ghost is-small transition-all" title="Open Sidebar">
+              <i data-lucide="panel-left-open"></i>
             </button>
-            <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 lg:hidden">Council of AI</h2>
+            <h2 class="is-size-7 is-uppercase has-text-weight-bold tracking-widest has-text-grey">Council of AI</h2>
           </div>
-          <div class="hidden lg:block">
-             <h2 class="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Council of AI</h2>
-          </div>
-          <div class="flex items-center gap-1">
-            <button id="clear-chat" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Clear Conversation">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
+          <div class="buttons">
+            <button id="clear-chat" class="button is-ghost is-small has-text-grey" title="Clear Conversation">
+              <i data-lucide="trash-2"></i>
             </button>
-            <button id="toggle-theme" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
-              <i id="theme-icon" data-lucide="sun" class="w-4 h-4"></i>
+            <button id="toggle-theme" class="button is-ghost is-small has-text-grey">
+              <i id="theme-icon" data-lucide="sun"></i>
             </button>
           </div>
         </header>
 
-        <!-- Minimized Area (AI 7, AI 8...) -->
-        <div id="minimized-row" class="px-3 sm:px-4 pt-3 flex items-center gap-4 hidden overflow-x-auto no-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
-          <div id="minimized-tray-container" class="flex items-center gap-3"></div>
+        <!-- Minimized Area -->
+        <div id="minimized-row" class="px-5 py-3 is-flex is-align-items-center gap-4 is-hidden is-overflow-x-auto no-scrollbar border-bottom">
+          <div id="minimized-tray-container" class="is-flex is-align-items-center gap-3"></div>
         </div>
 
         <!-- Sessions Grid -->
-        <div id="sessions-container" class="flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500">
-          <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
-              <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
-            </div>
-            <div class="space-y-1">
-              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p>
+        <div id="sessions-container" class="is-flex-grow-1 is-overflow-hidden p-4 grid gap-4 bg-light-opacity">
+          <div id="empty-state" class="is-flex is-flex-direction-column is-align-items-center is-justify-content-center h-full has-text-centered p-6 is-user-select-none">
+            <div class="box is-shadowless bg-transparent">
+              <i data-lucide="sparkles" class="is-size-1 has-text-grey-lighter mb-4"></i>
+              <p class="has-text-weight-semibold has-text-grey">No AI members selected</p>
+              <p class="is-size-7 has-text-grey-light mb-2">Open the sidebar and scan for AI tabs, then select members to start.</p>
             </div>
           </div>
         </div>
 
         <!-- Input Area -->
-        <div class="flex-shrink-0 p-3 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800">
-          <form id="chat-form" class="flex items-end gap-2">
-            <div class="relative flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500 transition-all shadow-sm overflow-hidden">
-              <textarea id="chat-input" placeholder="Ask the council..." class="w-full max-h-32 min-h-[44px] py-3 pl-3 pr-2 bg-transparent outline-none resize-none text-sm text-gray-800 dark:text-gray-200" rows="1"></textarea>
+        <div class="p-5 border-top">
+          <form id="chat-form" class="is-flex is-align-items-end gap-3">
+            <div class="control is-flex-grow-1 bg-light-opacity rounded-xl border p-1 focus-within-primary transition-all">
+              <textarea id="chat-input" class="textarea is-shadowless is-borderless has-fixed-size px-4 py-2 is-size-6 no-scrollbar" placeholder="Ask the council..." rows="1" style="min-height: 48px; max-height: 200px; background: transparent; box-shadow: none;"></textarea>
             </div>
-            <button id="send-button" type="submit" disabled class="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-800 disabled:text-gray-500 text-white transition-colors shadow-sm">
-              <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
+            <button id="send-button" type="submit" disabled class="button is-primary is-rounded h-[48px] px-5 shadow-sm transition-all hover-translate-y">
+              <i data-lucide="send"></i>
             </button>
           </form>
-          <div class="text-center mt-1.5">
-            <span class="text-[9px] text-gray-400 dark:text-gray-500">Messages broadcasted to all active AI members via extension bridge.</span>
+          <div class="has-text-centered mt-3">
+            <span class="is-size-7 has-text-grey-light">Messages broadcasted to all active AI members via extension bridge.</span>
           </div>
         </div>
       </main>
@@ -248,737 +157,6 @@
     <!-- Scripts -->
     <script src="platforms.js"></script>
     <script src="syntax-highlight.js"></script>
-    <script>
-    // =========================================================
-    // web-ui.html — Main UI (communicates with extension via chrome.runtime)
-    // Extension background service worker handles AI tab interactions directly.
-    // =========================================================
-
-    const INITIAL_TABS = PLATFORMS.map(p => ({ id: p.id, name: p.name, iconSrc: p.iconSrc, homeUrl: p.homeUrl, connected: false, tabId: null }));
-
-    let state = {
-      theme: 'dark',
-      status: 'idle',
-      mode: 'council',
-      tabs: INITIAL_TABS,
-      activeMembers: [],
-      displayOrder: [], // Dictates UI positions (up to 6 visible, others minimized)
-      messages: [],
-      config: { responseTimeout: 30 },
-      sidebarOpen: true,
-      extensionAvailable: false,
-      msgIdCounter: 0,
-      isMock: false // Reverted to false for production extension usage
-    };
-
-    function saveState() {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.local.set({ ai_workspace_state: {
-          mode: state.mode,
-          activeMembers: state.activeMembers,
-          displayOrder: state.displayOrder,
-          theme: state.theme,
-          config: state.config,
-          sidebarOpen: state.sidebarOpen
-        }});
-      } else {
-        localStorage.setItem('ai_workspace_state', JSON.stringify({
-          mode: state.mode,
-          activeMembers: state.activeMembers,
-          displayOrder: state.displayOrder,
-          theme: state.theme,
-          config: state.config,
-          sidebarOpen: state.sidebarOpen
-        }));
-      }
-    }
-
-    // --- DOM ---
-    const sessionsContainer = document.getElementById('sessions-container');
-    const tabsList = document.getElementById('tabs-list');
-    const scanTabsBtn = document.getElementById('scan-tabs-btn');
-    const noTabsMsg = document.getElementById('no-tabs-msg');
-    const extStatusDot = document.getElementById('ext-status-dot');
-    const chatInput = document.getElementById('chat-input');
-    const chatForm = document.getElementById('chat-form');
-    const sendButton = document.getElementById('send-button');
-    const minimizedRow = document.getElementById('minimized-row');
-    const minimizedTray = document.getElementById('minimized-tray-container');
-    const checkAllReadyBtn = document.getElementById('check-all-ready-btn');
-    const checkAllText = document.getElementById('check-all-text');
-    const toggleThemeBtn = document.getElementById('toggle-theme');
-    const themeIcon = document.getElementById('theme-icon');
-    const clearChatBtn = document.getElementById('clear-chat');
-    const openSidebarBtn = document.getElementById('open-sidebar');
-    const closeSidebarBtn = document.getElementById('close-sidebar');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const controlsContainer = document.getElementById('controls-container');
-    const responseTimeoutSlider = document.getElementById('response-timeout-slider');
-    const responseTimeoutValue = document.getElementById('response-timeout-value');
-    const responseTimeoutSection = document.getElementById('response-timeout-section');
-    const debateConfigSection = document.getElementById('debate-config-section');
-    const maxRoundsSlider = document.getElementById('max-rounds-slider');
-    const maxRoundsValue = document.getElementById('max-rounds-value');
-    const maxDebateTurnsSlider = document.getElementById('max-debate-turns-slider');
-    const maxDebateTurnsValue = document.getElementById('max-debate-turns-value');
-    const modeToggle = document.getElementById('mode-toggle');
-    const councilModeBtn = document.getElementById('council-mode-btn');
-    const debateModeBtn = document.getElementById('debate-mode-btn');
-    const settingsSection = document.getElementById('settings-section');
-    const settingsTitle = document.getElementById('settings-title');
-
-    function escHtml(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    function parseMarkdown(text) {
-      if (!text) return '';
-      const blocks = [];
-      let html = text.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-        const i = blocks.length;
-        const highlighted = Highlighter.highlight(code.trim(), lang);
-        blocks.push(`<div class="code-block my-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">`+
-          `<div class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 select-none">`+
-          `<span class="text-[10px] font-mono text-gray-500 dark:text-gray-400">${escHtml(lang||'code')}</span>`+
-          `<button class="copy-btn text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer">Copy</button>`+
-          `</div><pre class="bg-gray-50 dark:bg-gray-900 p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre"><code>${highlighted}</code></pre></div>`);
-        return `\x00BLOCK${i}\x00`;
-      });
-      html = escHtml(html);
-      html = html.replace(/`([^`\n]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs font-mono">$1</code>');
-      html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-      html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-      html = html.replace(/^#{1,3} (.+)$/gm, '<div class="font-semibold mt-1.5 mb-0.5">$1</div>');
-      html = html.replace(/^[*\-•] (.+)$/gm, '<div class="flex gap-1.5 ml-2"><span>•</span><span>$1</span></div>');
-      html = html.replace(/^(\d+)\. (.+)$/gm, '<div class="flex gap-1.5 ml-2"><span>$1.</span><span>$2</span></div>');
-      html = html.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
-      blocks.forEach((b, i) => { html = html.replace(`\x00BLOCK${i}\x00`, b); });
-      return html;
-    }
-
-    // --- Extension communication (port-based) ---
-    const EXTENSION_ID = 'capcgedagknfpheplofhfallbkifjnob';
-    const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id === EXTENSION_ID);
-    let extensionPort = null;
-    const pendingCallbacks = new Map();
-
-    function nextId() { return `wui_${Date.now()}_${state.msgIdCounter++}`; }
-
-    function connectToExtension() {
-      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.connect) {
-        setExtStatus(false, 'Extension API not available');
-        return;
-      }
-      try {
-        // When running as extension page: connect directly
-        // When running on localhost: connect with extension ID (requires externally_connectable)
-        extensionPort = isExtensionPage
-          ? chrome.runtime.connect({ name: 'webui-bridge' })
-          : chrome.runtime.connect(EXTENSION_ID, { name: 'webui-bridge' });
-
-        extensionPort.onMessage.addListener((msg) => {
-          if (!msg) return;
-
-          // Connection confirmation or pong
-          if (msg.type === 'pong' || msg.connected) {
-            setExtStatus(true, 'Extension online');
-            return;
-          }
-
-          // Command acknowledgment
-          if (msg.type === 'ack' && msg.id) {
-            const cb = pendingCallbacks.get(msg.id);
-            if (cb) { cb.resolve({ ok: true }); pendingCallbacks.delete(msg.id); }
-            return;
-          }
-
-          // Command error
-          if (msg.type === 'error' && msg.id) {
-            const cb = pendingCallbacks.get(msg.id);
-            if (cb) { cb.reject(new Error(msg.error || 'Unknown error')); pendingCallbacks.delete(msg.id); }
-            return;
-          }
-
-          // Relay responses (tab_scan, ai_waiting, ai_response)
-          if (msg.target === 'webui') {
-            handleRelayResponse(msg);
-          }
-        });
-
-        extensionPort.onDisconnect.addListener(() => {
-          extensionPort = null;
-          setExtStatus(false, 'Extension disconnected');
-          // Auto-reconnect after delay
-          setTimeout(connectToExtension, 3000);
-        });
-
-      } catch (err) {
-        console.error('[web-ui] Connect error:', err);
-        setExtStatus(false, 'Cannot connect to extension');
-        setTimeout(connectToExtension, 5000);
-      }
-    }
-
-    function sendToExtension(type, payload = {}) {
-      return new Promise((resolve, reject) => {
-        if (!extensionPort) {
-          reject(new Error('Extension not connected. Please check the extension is installed.'));
-          return;
-        }
-        const id = nextId();
-        pendingCallbacks.set(id, { resolve, reject });
-        extensionPort.postMessage({ target: 'background', id, type, payload });
-        // Timeout after 10 seconds for ack
-        setTimeout(() => {
-          if (pendingCallbacks.has(id)) {
-            pendingCallbacks.delete(id);
-            reject(new Error('Extension communication timeout'));
-          }
-        }, 10000);
-      });
-    }
-
-    function openTabBackground(url) {
-      sendToExtension('create_tab', { url });
-    }
-
-    function handleRelayResponse(msg) {
-      const { responseType, data } = msg;
-
-      if (responseType === 'tab_scan') {
-        // Merge connected status into state.tabs
-        const scanResults = data || [];
-        state.tabs.forEach(t => { 
-          const found = scanResults.find(r => r.id === t.id);
-          t.connected = !!found; 
-          t.tabId = found ? found.tabId : null; 
-        });
-        
-        // Reverted: No longer injecting mock connected status
-        if (state.isMock) {
-          // Keep mock selection logic here only if isMock is manually toggled
-        }
-
-        // Ensure all active members have a slot in displayOrder
-        state.activeMembers.forEach(id => {
-          if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
-        });
-
-        // Clean up displayOrder for members no longer in activeMembers
-        state.displayOrder = state.displayOrder.filter(id => state.activeMembers.includes(id));
-
-        renderTabs();
-        renderSessions();
-        saveState();
-      }
-
-      if (responseType === 'ai_waiting') {
-        if (!state.messages.find(m => m.id === data.id)) {
-          state.messages.push(data);
-          renderSessions();
-        }
-      }
-
-      if (responseType === 'ai_response') {
-        if (data.id && data.id.startsWith('wait_')) {
-          state.messages = state.messages.filter(m => m.id !== data.id);
-        }
-        if (!state.messages.find(m => m.id === data.id)) {
-          state.messages.push(data);
-        }
-        renderSessions();
-        const waiting = state.messages.filter(m => m.senderType === 'system' && m.text && m.text.startsWith('Waiting for'));
-        if (waiting.length === 0 && state.status === 'running') {
-          state.status = 'idle';
-          sendButton.disabled = false;
-          renderControls();
-        }
-      }
-
-      if (responseType === 'error') {
-        console.error('[web-ui] Extension error:', data);
-      }
-    }
-
-    // --- Render ---
-    function render() {
-      renderTabs();
-      renderSessions();
-      renderControls();
-      renderModeToggle();
-      updateSidebarUI();
-    }
-
-    function renderTabs() {
-      tabsList.innerHTML = '';
-      noTabsMsg.classList.add('hidden');
-      
-      const readyTabs = state.tabs.filter(t => t.connected);
-      const allReadySelected = readyTabs.length > 0 && readyTabs.every(t => state.activeMembers.includes(t.id));
-      
-      const checkAllCheckbox = document.getElementById('check-all-checkbox');
-      if (checkAllCheckbox) {
-        checkAllCheckbox.classList.toggle('custom-checkbox-checked', allReadySelected);
-        checkAllCheckbox.innerHTML = allReadySelected ? '<i data-lucide="check" class="w-2.5 h-2.5"></i>' : '';
-      }
-      if (checkAllText) {
-        checkAllText.textContent = allReadySelected ? 'Uncheck all ready' : 'Check all ready';
-      }
-
-      const sortedTabs = [...state.tabs].sort((a, b) => {
-        if (a.connected && !b.connected) return -1;
-        if (!a.connected && b.connected) return 1;
-        return 0; // maintain original order
-      });
-      sortedTabs.forEach(tab => {
-        const isActive = tab.connected && state.activeMembers.includes(tab.id);
-        const el = document.createElement('div');
-        if (tab.connected) {
-          el.className = `flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all mb-2 ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}`;
-          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="custom-checkbox ${isActive ? 'custom-checkbox-checked' : ''}">${isActive ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</div>`;
-          el.onclick = () => toggleMember(tab.id);
-        } else {
-          el.className = `flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-75 mb-2`;
-          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 grayscale"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm text-gray-500 dark:text-gray-400">${tab.name}</div><div class="text-xs text-red-500 dark:text-red-400">Not Ready</div></div></div><button class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}'); if(!state.activeMembers.includes('${tab.id}')) toggleMember('${tab.id}'); event.stopPropagation();">Open</button>`;
-        }
-        tabsList.appendChild(el);
-      });
-      lucide.createIcons();
-    }
-
-    function renderSessions() {
-      // 1. Sync displayOrder with activeMembers
-      state.displayOrder = state.displayOrder.filter(id => state.activeMembers.includes(id));
-      state.activeMembers.forEach(id => {
-        if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
-      });
-
-      const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
-      const count = activeTabs.length;
-
-      // Handle empty state
-      if (count === 0) {
-        sessionsContainer.innerHTML = `
-          <div id="empty-state" class="col-span-full row-span-full flex flex-col items-center justify-center h-full text-center px-6 gap-4 select-none">
-            <div class="w-14 h-14 rounded-2xl flex items-center justify-center">
-              <i data-lucide="sparkles" class="w-7 h-7 text-indigo-500"></i>
-            </div>
-            <div class="space-y-1">
-              <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">No AI members selected</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[240px]">Open the sidebar and scan for AI tabs, then select members to start.</p>
-            </div>
-          </div>`;
-        minimizedRow.classList.add('hidden');
-        lucide.createIcons();
-        return;
-      }
-
-      // 2. Identify Visible vs Minimized
-      const visibleIds = state.displayOrder.slice(0, 6);
-      const minimizedIds = state.displayOrder.slice(6);
-
-      // Remove empty-state if it exists
-      const emptyState = sessionsContainer.querySelector('#empty-state');
-      if (emptyState) emptyState.remove();
-
-      // 3. Render Minimized Tray
-      if (minimizedIds.length > 0) {
-        minimizedRow.classList.remove('hidden');
-        minimizedTray.innerHTML = '';
-        minimizedIds.forEach(mid => {
-          const tab = state.tabs.find(t => t.id === mid);
-          if (!tab) return;
-          const mItem = document.createElement('div');
-          mItem.className = 'minimized-item flex items-center justify-between gap-2.5 px-3 bg-white dark:bg-gray-900 shadow-sm cursor-pointer select-none';
-          mItem.innerHTML = `
-            <div class="flex items-center gap-2.5 truncate flex-1">
-              <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
-              <span class="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">${tab.name}</span>
-            </div>
-            <div class="flex items-center gap-1.5 border-l border-gray-200 dark:border-gray-700 pl-2">
-              <button onclick="expandMember('${mid}'); event.stopPropagation();" class="p-0.5 hover:text-indigo-500 transition-colors" title="Expand">
-                <i data-lucide="maximize-2" class="w-3 h-3"></i>
-              </button>
-              <button onclick="toggleMember('${mid}'); event.stopPropagation();" class="p-0.5 hover:text-red-500 transition-colors text-gray-400" title="Close">
-                <i data-lucide="x" class="w-3 h-3"></i>
-              </button>
-            </div>
-          `;
-          mItem.onclick = () => expandMember(mid);
-          minimizedTray.appendChild(mItem);
-        });
-      } else {
-        minimizedRow.classList.add('hidden');
-      }
-
-      // 4. Render Grid Visible Sessions
-      const gridCount = visibleIds.length;
-      sessionsContainer.className = `flex-1 overflow-hidden p-3 sm:p-4 grid gap-4 bg-gray-50/50 dark:bg-gray-950/50 transition-all duration-500 sessions-grid-${gridCount}`;
-      
-      // Clean up orphaned windows
-      Array.from(sessionsContainer.querySelectorAll('.session-window')).forEach(w => {
-        if (!visibleIds.includes(w.dataset.id)) w.remove();
-      });
-
-      visibleIds.forEach(id => {
-        const tab = state.tabs.find(t => t.id === id);
-        if (!tab) return;
-
-        let windowEl = sessionsContainer.querySelector(`.session-window[data-id="${id}"]`);
-        if (!windowEl) {
-          windowEl = document.createElement('div');
-          windowEl.className = 'session-window';
-          windowEl.dataset.id = id;
-          windowEl.innerHTML = `
-            <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200/50 dark:border-gray-800/50 flex items-center gap-2.5 bg-white/50 dark:bg-gray-900/50">
-              <div class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700 flex items-center justify-center">
-                <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
-              </div>
-              <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
-              <div class="ml-auto flex items-center gap-3">
-                <!-- Action Buttons -->
-                <div class="flex items-center gap-1 ml-auto">
-                  <button onclick="minimizeMember('${id}'); event.stopPropagation();" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all" title="Minimize">
-                    <i data-lucide="minus" class="w-4 h-4"></i>
-                  </button>
-                  <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all" title="Close Session">
-                    <i data-lucide="x-circle" class="w-4 h-4"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
-          sessionsContainer.appendChild(windowEl);
-        }
-        
-        // Reorder if necessary manually inserting to match displayOrder
-        const indexInVisible = visibleIds.indexOf(id);
-        if (sessionsContainer.children[indexInVisible] !== windowEl) {
-          sessionsContainer.insertBefore(windowEl, sessionsContainer.children[indexInVisible]);
-        }
-
-        if (tab.connected) {
-          renderMessagesForSession(tab.id, tab.name, windowEl.querySelector('.chat-messages'));
-        } else {
-          windowEl.querySelector('.chat-messages').innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full text-center p-6 gap-3">
-              <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
-              </div>
-              <p class="text-xs font-medium text-gray-500">This AI tab is not open or ready.</p>
-              <button class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors shadow-sm" onclick="openTabBackground('${tab.homeUrl}');">Open ${tab.name}</button>
-            </div>`;
-        }
-      });
-      lucide.createIcons();
-    }
-
-    function renderMessagesForSession(memberId, memberName, container) {
-      const msgs = state.messages.filter(m => {
-        if (m.senderType === 'human') return true;
-        if (m.senderType === 'ai' && m.sender === memberName) return true;
-        if (m.senderType === 'system' && m.sender === memberName) return true;
-        return false;
-      });
-      container.innerHTML = '';
-      msgs.forEach(msg => {
-        const isHuman = msg.senderType === 'human';
-        const isSystem = msg.senderType === 'system';
-        if (isSystem) {
-          const sysEl = document.createElement('div');
-          sysEl.className = "flex justify-center my-3";
-          sysEl.innerHTML = `<div class="bg-gray-100/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-[10px] px-2.5 py-0.5 rounded-full font-medium border border-gray-200/50 dark:border-gray-700/30 text-center">${escHtml(msg.text)}</div>`;
-          container.appendChild(sysEl); return;
-        }
-        const el = document.createElement('div');
-        el.className = `flex gap-2.5 max-w-[95%] ${isHuman ? 'ml-auto flex-row-reverse' : 'mr-auto'}`;
-        const content = isHuman ? escHtml(msg.text) : parseMarkdown(msg.text);
-        const color = isHuman ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm';
-        el.innerHTML = `<div class="flex flex-col ${isHuman?'items-end':'items-start'}><div class="flex items-baseline gap-1.5 mb-0.5 px-0.5"><span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">${isHuman?'You':msg.sender}</span></div><div class="px-3 py-2 rounded-2xl text-[13px] leading-relaxed shadow-sm ${color}">${content}</div></div>`;
-        container.appendChild(el);
-      });
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function renderControls() {
-      if (!controlsContainer) return;
-      controlsContainer.innerHTML = '';
-      // Buttons removed from header as requested
-    }
-
-    function renderModeToggle() {
-      const isDebate = state.mode === 'debate';
-      councilModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='council' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
-      debateModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${isDebate ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
-      
-      debateConfigSection.classList.toggle('hidden', !isDebate);
-      if (settingsSection) settingsSection.classList.toggle('hidden', !isDebate);
-      
-      if (responseTimeoutSection) {
-        responseTimeoutSection.classList.toggle('hidden', !isDebate);
-      }
-    }
-
-    function updateSidebarUI() {
-      const isOpen = state.sidebarOpen;
-      const isMobile = window.innerWidth < 1024;
-
-      if (isOpen) {
-        sidebar.classList.remove('closed');
-        sidebar.classList.add('open');
-        sidebar.classList.remove('hidden');
-      } else {
-        sidebar.classList.add('closed');
-        sidebar.classList.remove('open');
-        setTimeout(() => { if(!state.sidebarOpen) sidebar.classList.add('hidden'); }, 300);
-      }
-
-      if (sidebarOverlay && isMobile) {
-        sidebarOverlay.classList.toggle('hidden', !isOpen);
-        sidebarOverlay.style.pointerEvents = isOpen ? 'auto' : 'none';
-      } else if (sidebarOverlay) {
-        sidebarOverlay.classList.add('hidden');
-        sidebarOverlay.style.pointerEvents = 'none';
-      }
-
-      if (openSidebarBtn) openSidebarBtn.classList.toggle('hidden', isOpen);
-      
-      if (isOpen && isMobile) {
-        sidebar.style.zIndex = '50';
-        sidebar.classList.add('fixed');
-        sidebar.classList.remove('relative');
-      } else {
-        sidebar.style.zIndex = 'auto';
-        sidebar.classList.remove('fixed');
-        sidebar.classList.add('relative');
-      }
-      
-      lucide.createIcons();
-    }
-
-    function updateTheme() {
-      if (state.theme === 'dark') {
-        document.documentElement.classList.add('dark');
-        themeIcon.setAttribute('data-lucide', 'sun');
-      } else {
-        document.documentElement.classList.remove('dark');
-        themeIcon.setAttribute('data-lucide', 'moon');
-      }
-      lucide.createIcons();
-    }
-
-    function setExtStatus(online, msg) {
-      state.extensionAvailable = online;
-      if (extStatusDot) {
-        extStatusDot.className = `w-2.5 h-2.5 rounded-full transition-all duration-300 border border-white/20 ${online ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]'}`;
-        extStatusDot.title = online ? 'Extension connected' : 'Extension not connected';
-      }
-    }
-
-    // --- Actions ---
-    function toggleMember(id) {
-      if (state.activeMembers.includes(id)) {
-        state.activeMembers = state.activeMembers.filter(m => m !== id);
-        state.displayOrder = state.displayOrder.filter(m => m !== id);
-      } else {
-        state.activeMembers.push(id);
-        if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
-      }
-      renderTabs();
-      renderSessions();
-      saveState();
-      chatInput.oninput && chatInput.oninput();
-    }
-
-    function checkAllReady() {
-      const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
-      if (readyTabIds.length === 0) return;
-      
-      const allSelected = readyTabIds.every(id => state.activeMembers.includes(id));
-      
-      if (allSelected) {
-        // Deselect all ready members
-        state.activeMembers = state.activeMembers.filter(id => !readyTabIds.includes(id));
-        state.displayOrder = state.displayOrder.filter(id => !readyTabIds.includes(id));
-      } else {
-        // Select all ready members
-        readyTabIds.forEach(id => {
-          if (!state.activeMembers.includes(id)) state.activeMembers.push(id);
-          if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
-        });
-      }
-      
-      renderTabs();
-      renderSessions();
-      saveState();
-      chatInput.oninput && chatInput.oninput();
-    }
-
-    function minimizeMember(id) {
-      state.displayOrder = state.displayOrder.filter(m => m !== id);
-      state.displayOrder.push(id);
-      renderSessions();
-      saveState();
-    }
-
-    function expandMember(id) {
-      const idx = state.displayOrder.indexOf(id);
-      if (idx > 5) {
-        // Swap with the 6th visible slot (index 5)
-        const targetId = state.displayOrder[5];
-        state.displayOrder[idx] = targetId;
-        state.displayOrder[5] = id;
-      }
-      renderSessions();
-      saveState();
-    }
-
-    function handleStop() {
-      state.status = 'idle';
-      renderControls();
-    }
-
-    function handleClear() {
-      if (confirm('Clear conversation?')) {
-        state.messages = [];
-        state.status = 'idle';
-        saveState();
-        render();
-      }
-    }
-
-    async function handleSendMessage(e) {
-      e?.preventDefault();
-      const text = chatInput.value.trim();
-      if (!text || state.activeMembers.length === 0) return;
-      chatInput.value = '';
-      sendButton.disabled = true;
-      state.status = 'running';
-      renderControls();
-
-      const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-      state.messages.push({ id: msgId, sender: 'You', senderType: 'human', text, timestamp: Date.now() });
-      renderSessions();
-
-      for (const memberId of state.activeMembers) {
-        const member = state.tabs.find(t => t.id === memberId);
-        if (!member || !member.connected) continue;
-        const waitingId = `wait_${memberId}_${Date.now()}`;
-        state.messages.push({ id: waitingId, sender: member.name, senderType: 'system', text: `Waiting for ${member.name}...`, timestamp: Date.now() });
-        renderSessions();
-        // ai_command responses arrive via port message handler, not via promise.
-        // Use 0 for indefinite wait in council mode.
-        const timeoutValue = state.mode === 'council' ? 0 : (state.config.responseTimeout || 30);
-        sendToExtension('ai_command', { memberId, memberName: member.name, message: text, waitingId, responseTimeout: timeoutValue })
-          .catch((err) => {
-            // Only show error if the command itself failed (not a response delivery issue)
-            state.messages = state.messages.filter(m => m.id !== waitingId);
-            state.messages.push({ id: `err_${Date.now()}`, sender: member.name, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() });
-            renderSessions();
-          });
-      }
-    }
-
-    function saveState() {
-      const dataToSave = {
-        mode: state.mode,
-        activeMembers: state.activeMembers,
-        displayOrder: state.displayOrder,
-        theme: state.theme,
-        config: state.config
-      };
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ ai_workspace_state: dataToSave });
-      } else {
-        localStorage.setItem('ai_workspace_state', JSON.stringify(dataToSave));
-      }
-    }
-
-    // --- Init ---
-    async function init() {
-      // Restore state if available
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        try {
-          const result = await new Promise(r => chrome.storage.local.get(['ai_workspace_state'], r));
-          if (result && result.ai_workspace_state) {
-            const saved = result.ai_workspace_state;
-            if (saved.mode) state.mode = saved.mode;
-            if (saved.activeMembers) state.activeMembers = saved.activeMembers;
-            if (saved.displayOrder) state.displayOrder = saved.displayOrder;
-            if (saved.theme) state.theme = saved.theme;
-            if (saved.config) state.config = { ...state.config, ...saved.config };
-          }
-        } catch (e) { console.warn('Failed to restore state:', e); }
-      } else {
-        const localSaved = localStorage.getItem('ai_workspace_state');
-        if (localSaved) {
-          const saved = JSON.parse(localSaved);
-          if (saved.mode) state.mode = saved.mode;
-          if (saved.activeMembers) state.activeMembers = saved.activeMembers;
-          if (saved.displayOrder) state.displayOrder = saved.displayOrder;
-          if (saved.theme) state.theme = saved.theme;
-          if (saved.config) state.config = { ...state.config, ...saved.config };
-          if (saved.hasOwnProperty('sidebarOpen')) state.sidebarOpen = saved.sidebarOpen;
-        }
-      }
-
-      updateTheme();
-      connectToExtension();
-
-      // Event listeners
-      chatInput.oninput = () => { sendButton.disabled = !chatInput.value.trim() || state.activeMembers.length === 0; };
-      chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
-      chatForm.onsubmit = handleSendMessage;
-      toggleThemeBtn.onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; updateTheme(); };
-      checkAllReadyBtn.onclick = checkAllReady;
-      clearChatBtn.onclick = handleClear;
-      if (openSidebarBtn) openSidebarBtn.onclick = () => { state.sidebarOpen = true; updateSidebarUI(); saveState(); };
-      if (closeSidebarBtn) closeSidebarBtn.onclick = () => { state.sidebarOpen = false; updateSidebarUI(); saveState(); };
-      if (sidebarOverlay) sidebarOverlay.onclick = () => { state.sidebarOpen = false; updateSidebarUI(); saveState(); };
-
-      scanTabsBtn.onclick = async () => {
-        if (!extensionPort) { alert('Extension not connected. Please check the extension is installed and enabled.'); return; }
-        scanTabsBtn.disabled = true; scanTabsBtn.classList.add('scanning');
-        try {
-          await sendToExtension('scan_tabs');
-        } catch (err) {
-          alert(`Scan failed: ${err.message}`);
-        } finally {
-          scanTabsBtn.classList.remove('scanning'); scanTabsBtn.disabled = false;
-        }
-      };
-
-      responseTimeoutSlider.oninput = (e) => { 
-        state.config.responseTimeout = parseInt(e.target.value); 
-        responseTimeoutValue.textContent = state.config.responseTimeout; 
-        saveState();
-      };
-      councilModeBtn.onclick = () => { state.mode = 'council'; saveState(); renderModeToggle(); };
-      debateModeBtn.onclick = () => { state.mode = 'debate'; saveState(); renderModeToggle(); };
-
-      // Helper to open tab without stealing focus
-      window.openTabBackground = (url) => {
-        // Always try to use the extension's background script to create the tab
-        // as it has the 'tabs' permission and can reliably create background tabs.
-        if (extensionPort) {
-          sendToExtension('create_tab', { url }).catch(() => {
-            // Very rare fallback
-            window.open(url, '_blank');
-          });
-        } else if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-          chrome.tabs.create({ url, active: false });
-        } else {
-          // Fallback if extension isn't connected yet
-          window.open(url, '_blank');
-        }
-      };
-
-
-
-      render();
-      lucide.createIcons();
-    }
-
-    init();
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>
