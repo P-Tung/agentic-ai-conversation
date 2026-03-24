@@ -27,6 +27,7 @@ let state = {
   isLandscape: window.innerWidth > window.innerHeight,
   bridgeReady: false,
   bridgeSessionId: null,
+  typing: {}, // { memberId: boolean }
 };
 
 // --- DOM Elements ---
@@ -466,33 +467,31 @@ function renderMessagesForSession(memberId, container) {
     `;
     container.appendChild(msgEl);
   });
+
+  // Render typing indicator if active
+  if (state.typing[memberId]) {
+    const typingEl = document.createElement('div');
+    typingEl.className = 'flex gap-2.5 max-w-[95%] mr-auto items-start';
+    typingEl.innerHTML = `
+      <div class="flex flex-col items-start">
+        <div class="flex items-baseline gap-1.5 mb-0.5 px-0.5">
+          <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">${member.name}</span>
+        </div>
+        <div class="px-4 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-tl-sm flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-500/50 animate-pulse"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-500/50 animate-pulse" style="animation-delay: 0.2s"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-500/50 animate-pulse" style="animation-delay: 0.4s"></span>
+        </div>
+      </div>
+    `;
+    container.appendChild(typingEl);
+  }
   
   container.scrollTop = container.scrollHeight;
 }
 
 function renderControls() {
-  controlsContainer.innerHTML = '';
-  if (state.status === 'idle') {
-    const startBtn = document.createElement('button');
-    startBtn.className = "flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors shadow-sm";
-    startBtn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i> Start';
-    startBtn.onclick = handleStart;
-    controlsContainer.appendChild(startBtn);
-  } else {
-    const playPauseBtn = document.createElement('button');
-    playPauseBtn.className = `flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm ${state.status === 'paused' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'btn-amber'}`;
-    playPauseBtn.innerHTML = state.status === 'paused' ? '<i data-lucide="play" class="w-3.5 h-3.5"></i>' : '<i data-lucide="pause" class="w-3.5 h-3.5"></i>';
-    playPauseBtn.onclick = state.status === 'paused' ? () => setStatus('running') : () => setStatus('paused');
-
-    const stopBtn = document.createElement('button');
-    stopBtn.className = "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm btn-red";
-    stopBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5"></i>';
-    stopBtn.onclick = handleStop;
-    
-    controlsContainer.appendChild(playPauseBtn);
-    controlsContainer.appendChild(stopBtn);
-  }
-  refreshIcons();
+  // Buttons removed from header as requested
 }
 
 function updateStatusUI() {
@@ -854,22 +853,14 @@ async function runBroadcast(text, parentMsgId = null) {
     const member = state.tabs.find(t => t.id === memberId);
     if (!member || !member.connected) return;
 
-    // Use a unique ID for the waiting message
-    const waitingId = `wait-${memberId}-${Date.now()}`;
-    state.messages.push({
-      id: waitingId,
-      sender: member.name,
-      senderType: 'system',
-      text: `Waiting for ${member.name}...`,
-      timestamp: Date.now(),
-      inReplyTo: parentMsgId,
-    });
+    // Set typing state
+    state.typing[memberId] = true;
     render();
 
     try {
       const response = await getAIResponse(member, text);
-      // Remove the waiting message
-      state.messages = state.messages.filter(m => m.id !== waitingId);
+      // Clear typing state
+      state.typing[memberId] = false;
       
       // Add to local state and relay to web-ui
       const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -889,7 +880,7 @@ async function runBroadcast(text, parentMsgId = null) {
       chrome.runtime.sendMessage({ target: 'webui', type: 'ai_response', data: aiMsg }).catch(() => {});
       render();
     } catch (err) {
-      state.messages = state.messages.filter(m => m.id !== waitingId);
+      state.typing[memberId] = false;
       const msgId = `ext_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const aiMsg = {
         id: msgId,
@@ -927,6 +918,7 @@ function toggleMember(id) {
 
 function checkAllReady() {
   const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
+  let changed = false;
   
   readyTabIds.forEach(id => {
     if (!state.activeMembers.includes(id)) {
@@ -934,11 +926,15 @@ function checkAllReady() {
       if (!state.displayOrder.includes(id)) {
         state.displayOrder.push(id);
       }
+      changed = true;
     }
   });
 
-  saveState();
-  render();
+  if (changed) {
+    saveState();
+    renderTabs();
+    renderSessions();
+  }
 }
 
 function minimizeMember(id) {
