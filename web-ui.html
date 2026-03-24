@@ -35,6 +35,10 @@
       @keyframes spin-cw { to { transform: rotate(360deg); } }
       .scanning svg { animation: spin-cw 0.7s linear infinite; }
 
+      #sidebar { transition: width 0.3s ease-in-out, transform 0.3s ease-in-out; }
+      #sidebar.closed { width: 0 !important; transform: translateX(-100%); }
+      #sidebar.open { width: 320px !important; transform: translateX(0); }
+
       /* Premium Minimized Tray Styling */
       .minimized-item {
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -54,23 +58,53 @@
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* Custom Checkbox */
+      .custom-checkbox {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 2px solid #d1d5db; /* gray-300 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
+      }
+      .dark .custom-checkbox {
+        border-color: #4b5563; /* gray-600 */
+      }
+      .custom-checkbox-checked {
+        background-color: #4f46e5; /* indigo-600 */
+        border-color: #4f46e5 !important;
+        color: white;
+      }
+      .custom-checkbox i {
+        opacity: 0;
+        transform: scale(0.5);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .custom-checkbox-checked i {
+        opacity: 1;
+        transform: scale(1);
+      }
     </style>
     <script src="lucide.min.js"></script>
   </head>
   <body class="bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200">
-    <div id="app-container" class="flex h-[100dvh] w-full overflow-hidden">
+    <div id="app-container" class="flex h-[100dvh] w-full overflow-hidden relative">
 
-      <!-- Sidebar Overlay -->
-      <div id="sidebar-overlay" class="hidden absolute inset-0 bg-black/40 dark:bg-black/60 z-20 transition-opacity"></div>
+      <!-- Sidebar Overlay (Mobile only) -->
+      <div id="sidebar-overlay" class="hidden absolute inset-0 bg-black/40 dark:bg-black/60 z-20 transition-opacity lg:!hidden"></div>
 
       <!-- Sidebar -->
-      <aside id="sidebar" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition-all duration-300 ease-in-out flex flex-col overflow-hidden w-80">
+      <aside id="sidebar" class="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden fixed inset-y-0 left-0 z-30 lg:relative lg:translate-x-0 open">
         <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
           <h1 class="font-semibold text-lg flex items-center gap-2">
             <i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i>
             Agentic AI
           </h1>
-          <button id="close-sidebar" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+          <button id="close-sidebar" class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Close Sidebar">
             <i data-lucide="panel-left-close" class="w-5 h-5"></i>
           </button>
         </div>
@@ -78,19 +112,20 @@
         <div class="flex-1 overflow-y-auto p-4 space-y-6">
           <!-- Extension Status -->
           <section>
-            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-              AI Members
-              <div class="flex items-center gap-1.5">
-                <span id="ext-status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
-                <span id="ext-status-label" class="text-[10px] text-gray-400">Searching...</span>
+            <div class="flex items-center justify-between mb-4 px-1">
+              <div class="flex items-center gap-2">
+                <button id="scan-tabs-btn" class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition-all active:scale-95 group" title="Scan for AI Tabs">
+                  <i data-lucide="refresh-cw" class="w-4 h-4 group-[.scanning]:animate-spin"></i>
+                </button>
+                <div id="ext-status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)] border border-white/20 transition-all duration-300" title="Extension not connected"></div>
               </div>
-            </h2>
-            <button id="check-all-ready-btn" class="w-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 mb-2">
-              <i data-lucide="check-square" class="w-3 h-3"></i> Check all ready
-            </button>
-            <button id="scan-tabs-btn" class="w-full bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 mb-3">
-              <i data-lucide="refresh-cw" class="w-3 h-3"></i> Scan for AI Tabs
-            </button>
+              
+              <button id="check-all-ready-btn" class="flex items-center gap-2 text-[10px] font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 uppercase tracking-widest transition-colors group">
+                <span id="check-all-text">Check all ready</span>
+                <div id="check-all-checkbox" class="custom-checkbox !w-4 !h-4 group-hover:border-indigo-400">
+                </div>
+              </button>
+            </div>
             <div id="tabs-list" class="space-y-2"></div>
             <p id="no-tabs-msg" class="text-xs text-gray-500 dark:text-gray-400 italic text-center mt-3 hidden">
               No AI tabs found.<br>Open ChatGPT, Claude, Gemini, Grok, or Perplexity.
@@ -135,8 +170,8 @@
           </section>
 
           <!-- Settings -->
-          <section>
-            <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Settings</h2>
+          <section id="settings-section">
+            <h2 id="settings-title" class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Settings</h2>
             <div class="space-y-4">
               <div id="response-timeout-section">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
@@ -157,10 +192,13 @@
         <!-- Header -->
         <header class="h-12 flex-shrink-0 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md z-10">
           <div class="flex items-center gap-2">
-            <button id="open-sidebar" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+            <button id="open-sidebar" class="hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Open Sidebar">
               <i data-lucide="panel-left-open" class="w-5 h-5"></i>
             </button>
-            <div id="controls-container" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg"></div>
+            <h2 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1 lg:hidden">Council of AI</h2>
+          </div>
+          <div class="hidden lg:block">
+             <h2 class="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Council of AI</h2>
           </div>
           <div class="flex items-center gap-1">
             <button id="clear-chat" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" title="Clear Conversation">
@@ -173,7 +211,7 @@
         </header>
 
         <!-- Minimized Area (AI 7, AI 8...) -->
-        <div id="minimized-row" class="px-4 pt-3 flex items-center gap-4 hidden overflow-x-auto no-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
+        <div id="minimized-row" class="px-3 sm:px-4 pt-3 flex items-center gap-4 hidden overflow-x-auto no-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
           <div id="minimized-tray-container" class="flex items-center gap-3"></div>
         </div>
 
@@ -240,7 +278,8 @@
           activeMembers: state.activeMembers,
           displayOrder: state.displayOrder,
           theme: state.theme,
-          config: state.config
+          config: state.config,
+          sidebarOpen: state.sidebarOpen
         }});
       } else {
         localStorage.setItem('ai_workspace_state', JSON.stringify({
@@ -248,7 +287,8 @@
           activeMembers: state.activeMembers,
           displayOrder: state.displayOrder,
           theme: state.theme,
-          config: state.config
+          config: state.config,
+          sidebarOpen: state.sidebarOpen
         }));
       }
     }
@@ -259,13 +299,13 @@
     const scanTabsBtn = document.getElementById('scan-tabs-btn');
     const noTabsMsg = document.getElementById('no-tabs-msg');
     const extStatusDot = document.getElementById('ext-status-dot');
-    const extStatusLabel = document.getElementById('ext-status-label');
     const chatInput = document.getElementById('chat-input');
     const chatForm = document.getElementById('chat-form');
     const sendButton = document.getElementById('send-button');
     const minimizedRow = document.getElementById('minimized-row');
     const minimizedTray = document.getElementById('minimized-tray-container');
     const checkAllReadyBtn = document.getElementById('check-all-ready-btn');
+    const checkAllText = document.getElementById('check-all-text');
     const toggleThemeBtn = document.getElementById('toggle-theme');
     const themeIcon = document.getElementById('theme-icon');
     const clearChatBtn = document.getElementById('clear-chat');
@@ -285,6 +325,8 @@
     const modeToggle = document.getElementById('mode-toggle');
     const councilModeBtn = document.getElementById('council-mode-btn');
     const debateModeBtn = document.getElementById('debate-mode-btn');
+    const settingsSection = document.getElementById('settings-section');
+    const settingsTitle = document.getElementById('settings-title');
 
     function escHtml(str) { return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -314,7 +356,7 @@
     }
 
     // --- Extension communication (port-based) ---
-    const EXTENSION_ID = 'cegflclfdpoifilacagoliheaiahlcfl';
+    const EXTENSION_ID = 'capcgedagknfpheplofhfallbkifjnob';
     const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id === EXTENSION_ID);
     let extensionPort = null;
     const pendingCallbacks = new Map();
@@ -469,6 +511,19 @@
     function renderTabs() {
       tabsList.innerHTML = '';
       noTabsMsg.classList.add('hidden');
+      
+      const readyTabs = state.tabs.filter(t => t.connected);
+      const allReadySelected = readyTabs.length > 0 && readyTabs.every(t => state.activeMembers.includes(t.id));
+      
+      const checkAllCheckbox = document.getElementById('check-all-checkbox');
+      if (checkAllCheckbox) {
+        checkAllCheckbox.classList.toggle('custom-checkbox-checked', allReadySelected);
+        checkAllCheckbox.innerHTML = allReadySelected ? '<i data-lucide="check" class="w-2.5 h-2.5"></i>' : '';
+      }
+      if (checkAllText) {
+        checkAllText.textContent = allReadySelected ? 'Uncheck all ready' : 'Check all ready';
+      }
+
       const sortedTabs = [...state.tabs].sort((a, b) => {
         if (a.connected && !b.connected) return -1;
         if (!a.connected && b.connected) return 1;
@@ -479,7 +534,7 @@
         const el = document.createElement('div');
         if (tab.connected) {
           el.className = `flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all mb-2 ${isActive ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 shadow-sm' : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-700'}`;
-          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="w-5 h-5 rounded-md flex items-center justify-center border ${isActive ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-300 dark:border-gray-600 text-transparent'}"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>`;
+          el.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm overflow-hidden p-1 border border-gray-100 dark:border-gray-700"><img src="${tab.iconSrc}" alt="${tab.name}" class="w-5 h-5 object-contain"></div><div><div class="font-medium text-sm">${tab.name}</div><div class="text-xs text-emerald-600 dark:text-emerald-400">Ready</div></div></div><div class="custom-checkbox ${isActive ? 'custom-checkbox-checked' : ''}">${isActive ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</div>`;
           el.onclick = () => toggleMember(tab.id);
         } else {
           el.className = `flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 opacity-75 mb-2`;
@@ -533,9 +588,9 @@
           const tab = state.tabs.find(t => t.id === mid);
           if (!tab) return;
           const mItem = document.createElement('div');
-          mItem.className = 'minimized-item flex items-center justify-between gap-3 px-4 bg-white dark:bg-gray-900 shadow-sm cursor-pointer select-none';
+          mItem.className = 'minimized-item flex items-center justify-between gap-2.5 px-3 bg-white dark:bg-gray-900 shadow-sm cursor-pointer select-none';
           mItem.innerHTML = `
-            <div class="flex items-center gap-2 truncate flex-1">
+            <div class="flex items-center gap-2.5 truncate flex-1">
               <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
               <span class="text-xs font-bold text-gray-700 dark:text-gray-300 truncate">${tab.name}</span>
             </div>
@@ -579,18 +634,16 @@
                 <img src="${tab.iconSrc}" class="w-4 h-4 object-contain">
               </div>
               <span class="text-xs font-bold tracking-tight text-gray-700 dark:text-gray-300">${tab.name}</span>
-              <div class="ml-auto flex items-center gap-2">
-                <div class="flex items-center gap-1.5 mr-2">
-                  <span class="w-1.5 h-1.5 rounded-full ${tab.connected ? 'bg-emerald-500' : 'bg-red-500'}"></span>
-                  <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider">${tab.connected ? 'Session' : 'Offline'}</span>
-                </div>
+              <div class="ml-auto flex items-center gap-3">
                 <!-- Action Buttons -->
-                <button onclick="minimizeMember('${id}'); event.stopPropagation();" class="w-6 h-6 rounded-md flex items-center justify-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all shadow-sm" title="Minimize">
-                  <i data-lucide="minus" class="w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-6 h-6 rounded-md flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-red-500/20" title="Close Session">
-                  <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                </button>
+                <div class="flex items-center gap-1 ml-auto">
+                  <button onclick="minimizeMember('${id}'); event.stopPropagation();" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all" title="Minimize">
+                    <i data-lucide="minus" class="w-4 h-4"></i>
+                  </button>
+                  <button onclick="toggleMember('${id}'); event.stopPropagation();" class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all" title="Close Session">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                  </button>
+                </div>
               </div>
             </div>
             <div class="chat-messages flex-1 overflow-y-auto p-4 space-y-4"></div>`;
@@ -647,37 +700,59 @@
     }
 
     function renderControls() {
+      if (!controlsContainer) return;
       controlsContainer.innerHTML = '';
-      if (state.status === 'idle') {
-        const btn = document.createElement('button');
-        btn.className = "flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors shadow-sm";
-        btn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i>';
-        btn.disabled = true;
-        btn.style.visibility = 'hidden';
-        controlsContainer.appendChild(btn);
-      } else {
-        const stopBtn = document.createElement('button');
-        stopBtn.className = "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors shadow-sm btn-red";
-        stopBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5"></i>';
-        stopBtn.onclick = handleStop;
-        controlsContainer.appendChild(stopBtn);
-      }
-      lucide.createIcons();
+      // Buttons removed from header as requested
     }
 
     function renderModeToggle() {
+      const isDebate = state.mode === 'debate';
       councilModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='council' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
-      debateModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${state.mode==='debate' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
-      debateConfigSection.classList.toggle('hidden', state.mode !== 'debate');
+      debateModeBtn.className = `mode-btn flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${isDebate ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`;
+      
+      debateConfigSection.classList.toggle('hidden', !isDebate);
+      if (settingsSection) settingsSection.classList.toggle('hidden', !isDebate);
       
       if (responseTimeoutSection) {
-        responseTimeoutSection.classList.toggle('hidden', state.mode === 'council');
+        responseTimeoutSection.classList.toggle('hidden', !isDebate);
       }
     }
 
     function updateSidebarUI() {
-      sidebar.className = `flex-shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 transition-all duration-300 ease-in-out flex flex-col overflow-hidden w-80`;
-      sidebarOverlay.classList.add('hidden');
+      const isOpen = state.sidebarOpen;
+      const isMobile = window.innerWidth < 1024;
+
+      if (isOpen) {
+        sidebar.classList.remove('closed');
+        sidebar.classList.add('open');
+        sidebar.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('closed');
+        sidebar.classList.remove('open');
+        setTimeout(() => { if(!state.sidebarOpen) sidebar.classList.add('hidden'); }, 300);
+      }
+
+      if (sidebarOverlay && isMobile) {
+        sidebarOverlay.classList.toggle('hidden', !isOpen);
+        sidebarOverlay.style.pointerEvents = isOpen ? 'auto' : 'none';
+      } else if (sidebarOverlay) {
+        sidebarOverlay.classList.add('hidden');
+        sidebarOverlay.style.pointerEvents = 'none';
+      }
+
+      if (openSidebarBtn) openSidebarBtn.classList.toggle('hidden', isOpen);
+      
+      if (isOpen && isMobile) {
+        sidebar.style.zIndex = '50';
+        sidebar.classList.add('fixed');
+        sidebar.classList.remove('relative');
+      } else {
+        sidebar.style.zIndex = 'auto';
+        sidebar.classList.remove('fixed');
+        sidebar.classList.add('relative');
+      }
+      
+      lucide.createIcons();
     }
 
     function updateTheme() {
@@ -693,8 +768,10 @@
 
     function setExtStatus(online, msg) {
       state.extensionAvailable = online;
-      extStatusDot.className = `w-2 h-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-amber-500'}`;
-      extStatusLabel.textContent = msg;
+      if (extStatusDot) {
+        extStatusDot.className = `w-2.5 h-2.5 rounded-full transition-all duration-300 border border-white/20 ${online ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]'}`;
+        extStatusDot.title = online ? 'Extension connected' : 'Extension not connected';
+      }
     }
 
     // --- Actions ---
@@ -714,19 +791,26 @@
 
     function checkAllReady() {
       const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
-      readyTabIds.forEach(id => {
-        if (!state.activeMembers.includes(id)) {
-          state.activeMembers.push(id);
-        }
-        if (!state.displayOrder.includes(id)) {
-          state.displayOrder.push(id);
-        }
-      });
+      if (readyTabIds.length === 0) return;
+      
+      const allSelected = readyTabIds.every(id => state.activeMembers.includes(id));
+      
+      if (allSelected) {
+        // Deselect all ready members
+        state.activeMembers = state.activeMembers.filter(id => !readyTabIds.includes(id));
+        state.displayOrder = state.displayOrder.filter(id => !readyTabIds.includes(id));
+      } else {
+        // Select all ready members
+        readyTabIds.forEach(id => {
+          if (!state.activeMembers.includes(id)) state.activeMembers.push(id);
+          if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
+        });
+      }
+      
       renderTabs();
       renderSessions();
       saveState();
       chatInput.oninput && chatInput.oninput();
-      setTimeout(() => sidebar.classList.add('hidden'), 500);
     }
 
     function minimizeMember(id) {
@@ -833,6 +917,7 @@
           if (saved.displayOrder) state.displayOrder = saved.displayOrder;
           if (saved.theme) state.theme = saved.theme;
           if (saved.config) state.config = { ...state.config, ...saved.config };
+          if (saved.hasOwnProperty('sidebarOpen')) state.sidebarOpen = saved.sidebarOpen;
         }
       }
 
@@ -846,9 +931,9 @@
       toggleThemeBtn.onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; updateTheme(); };
       checkAllReadyBtn.onclick = checkAllReady;
       clearChatBtn.onclick = handleClear;
-      openSidebarBtn.onclick = () => { sidebar.classList.remove('hidden'); };
-      closeSidebarBtn.onclick = () => { sidebar.classList.add('hidden'); };
-      sidebarOverlay.onclick = () => { sidebar.classList.add('hidden'); };
+      if (openSidebarBtn) openSidebarBtn.onclick = () => { state.sidebarOpen = true; updateSidebarUI(); saveState(); };
+      if (closeSidebarBtn) closeSidebarBtn.onclick = () => { state.sidebarOpen = false; updateSidebarUI(); saveState(); };
+      if (sidebarOverlay) sidebarOverlay.onclick = () => { state.sidebarOpen = false; updateSidebarUI(); saveState(); };
 
       scanTabsBtn.onclick = async () => {
         if (!extensionPort) { alert('Extension not connected. Please check the extension is installed and enabled.'); return; }
