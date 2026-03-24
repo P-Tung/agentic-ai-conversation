@@ -77,9 +77,9 @@ const PLATFORMS = [
     urlPatterns: ['*://www.perplexity.ai/*'],
     homeUrl: 'https://www.perplexity.ai/',
     selectors: {
-      input: ['div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
-      sendBtn: ['button[aria-label="Submit"]', 'button[type="submit"]'],
-      response: ['.prose', '[class*="answer"]'],
+      input: ['#ask-input', 'div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
+      sendBtn: ['button[aria-label="Submit"]', 'button:has(svg.fa-arrow-up)', 'button[type="submit"]'],
+      response: ['.prose', '.thread-block', '[class*="answer"]'],
       exclude: []
     },
   },
@@ -105,7 +105,7 @@ const PLATFORMS = [
     selectors: {
       input: ['#chat-input'],
       sendBtn: ['#send-message-button'],
-      response: ['.markdown-prose'],
+      response: ['.markdown-body', '.markdown-prose', '.text-gray-800'],
       exclude: [
         '.thought-process', 
         '.thinking-block', 
@@ -119,29 +119,16 @@ const PLATFORMS = [
     },
   },
   {
-    id: 'minimax',
-    name: 'MiniMax',
-    iconSrc: 'assets/minimax-icon.png',
-    urlPatterns: ['*://agent.minimax.io/*'],
-    homeUrl: 'https://agent.minimax.io/',
-    selectors: {
-      input: ['.tiptap-editor', 'div[contenteditable="true"]'],
-      sendBtn: ['button:has(svg)', 'div:has(svg)'],
-      response: ['.content_wrap', '.markdown-body'],
-      exclude: []
-    },
-  },
-  {
     id: 'genspark',
     name: 'GenSpark',
     iconSrc: 'assets/genspark-icon.png',
     urlPatterns: ['*://www.genspark.ai/*'],
     homeUrl: 'https://www.genspark.ai/',
     selectors: {
-      input: ['textarea.search-input.j-search-input', 'textarea'],
-      sendBtn: ['.right-icon-group div:last-child', 'button[type="submit"]'],
-      response: ['.spark-content', '.prose'],
-      exclude: ['.thinking-process', '.thought-block']
+      input: ['.search-input.j-search-input', 'textarea'],
+      sendBtn: ['button:has(svg)', '.search-btn', '.right-icon-group div:last-child', 'button[type="submit"]'],
+      response: ['.conversation-statement.assistant .content', '.chat-wrapper', '.answer-content', '.spark-content', '.prose'],
+      exclude: ['.thinking_prompt', '.cursor', '.buttons', '.thinking-process', '.thought-block']
     },
   },
 ];

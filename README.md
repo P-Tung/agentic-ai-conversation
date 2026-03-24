@@ -1,6 +1,6 @@
 # Agentic AI Conversation
 
-A system for sending a single message to **multiple AI chatbots** (ChatGPT, Claude, Gemini, Grok, Perplexity, Kimi, Z.ai, MiniMax, GenSpark) simultaneously and viewing their responses side-by-side. The Chrome extension acts as an **invisible bridge** between a full-screen web UI and the AI chat tabs.
+A system for sending a single message to **multiple AI chatbots** (ChatGPT, Claude, Gemini, Grok, Perplexity, Kimi, Z.ai, GenSpark) simultaneously and viewing their responses side-by-side. The Chrome extension acts as an **invisible bridge** between a full-screen web UI and the AI chat tabs.
 
 ## Core Design Philosophy
 
@@ -99,7 +99,6 @@ Web UI:  user clicks "Scan for AI Tabs"
 | Perplexity | `perplexity.ai` | ✅ Supported |
 | Kimi | `kimi.com` | ✅ Supported |
 | Z.ai | `chat.z.ai` | ✅ Supported |
-| MiniMax | `agent.minimax.io` | ✅ Supported |
 | GenSpark | `genspark.ai` | ✅ Supported |
 
 Adding a new platform requires only adding an entry to `platforms.js` with URL patterns and CSS selectors.

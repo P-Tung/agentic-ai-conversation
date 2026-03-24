@@ -70,9 +70,9 @@ const PLATFORMS = [
     name: 'Perplexity',
     urlPatterns: ['*://www.perplexity.ai/*'],
     selectors: {
-      input: ['div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
-      sendBtn: ['button[aria-label="Submit"]', 'button[type="submit"]'],
-      response: ['.prose', '[class*="answer"]'],
+      input: ['#ask-input', 'div[contenteditable="true"]', 'textarea[placeholder*="Ask"]', 'textarea'],
+      sendBtn: ['button[aria-label="Submit"]', 'button:has(svg.fa-arrow-up)', 'button[type="submit"]'],
+      response: ['.prose', '.thread-block', '[class*="answer"]'],
     },
   },
   {
@@ -92,17 +92,7 @@ const PLATFORMS = [
     selectors: {
       input: ['#chat-input'],
       sendBtn: ['#send-message-button'],
-      response: ['.markdown-prose'],
-    },
-  },
-  {
-    id: 'minimax',
-    name: 'MiniMax',
-    urlPatterns: ['*://agent.minimax.io/*'],
-    selectors: {
-      input: ['.tiptap-editor', 'div[contenteditable="true"]'],
-      sendBtn: ['button:has(svg)', 'div:has(svg)'],
-      response: ['.content_wrap', '.markdown-body'],
+      response: ['.markdown-body', '.markdown-prose', '.text-gray-800'],
     },
   },
   {
@@ -110,10 +100,10 @@ const PLATFORMS = [
     name: 'GenSpark',
     urlPatterns: ['*://www.genspark.ai/*'],
     selectors: {
-      input: ['textarea.search-input.j-search-input', 'textarea'],
-      sendBtn: ['.right-icon-group div:last-child', 'button[type="submit"]'],
-      response: ['.spark-content', '.prose'],
-      exclude: ['.thinking-process', '.thought-block']
+      input: ['.search-input.j-search-input', 'textarea'],
+      sendBtn: ['button:has(svg)', '.search-btn', '.right-icon-group div:last-child', 'button[type="submit"]'],
+      response: ['.conversation-statement.assistant .content', '.chat-wrapper', '.answer-content', '.spark-content', '.prose'],
+      exclude: ['.thinking_prompt', '.cursor', '.buttons', '.thinking-process', '.thought-block']
     },
   },
 ];
@@ -212,30 +202,30 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
   return new Promise((resolve) => {
     try {
       // 1. Initial State: Count existing responses to detect the new one appearing
-      const getResponseCount = () => {
+      const getResponseCounts = () => {
+        const counts = {};
         for (const sel of (selectors.response || [])) {
-          const els = document.querySelectorAll(sel);
-          if (els.length > 0) return els.length;
+          counts[sel] = document.querySelectorAll(sel).length;
         }
-        return 0;
+        return counts;
       };
-      const initialCount = getResponseCount();
+      const initialCounts = getResponseCounts();
 
       // 2. Find and fill input
       const inputEl = (selectors.input || []).map(s => document.querySelector(s)).find(el => el !== null);
       if (!inputEl) return resolve('[Error] Could not find input box.');
 
-      if (inputEl.tagName === 'TEXTAREA' || inputEl.tagName === 'INPUT') {
-        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
-        if (nativeSetter) nativeSetter.call(inputEl, message); else inputEl.value = message;
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-      } else if (inputEl.isContentEditable) {
+      if (inputEl.isContentEditable || inputEl.tagName === 'DIV') {
         inputEl.focus();
+        // Clear if not empty (select all then insert)
         document.execCommand('selectAll', false, null);
         document.execCommand('insertText', false, message);
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        const nativeSetter = (inputEl.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype).value?.set;
+        if (nativeSetter) nativeSetter.call(inputEl, message); else inputEl.value = message;
       }
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      inputEl.dispatchEvent(new Event('change', { bubbles: true }));
 
       // 3. Send message
       setTimeout(() => {
@@ -265,12 +255,9 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
             let responseContainer = null;
             for (const sel of (selectors.response || [])) {
               const els = document.querySelectorAll(sel);
-              // Wait for count to increase OR if it was already empty, wait for first one
+              const initialCount = initialCounts[sel] || 0;
               if (els.length > initialCount) {
                 responseContainer = els[els.length - 1];
-                break;
-              } else if (initialCount === 0 && els.length > 0) {
-                responseContainer = els[0];
                 break;
               }
             }
