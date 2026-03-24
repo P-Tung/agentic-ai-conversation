@@ -26,6 +26,39 @@
   --panel-bg-alt: #1f2937;
 }
 
+/* Fix Bulma backgrounds for dark mode */
+[data-theme="dark"] .has-background-light {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+[data-theme="dark"] .has-background-primary-light {
+  background-color: rgba(79, 70, 229, 0.2) !important;
+}
+
+[data-theme="dark"] .has-background-white {
+  background-color: #111827 !important;
+}
+
+[data-theme="dark"] .has-text-grey-dark {
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] .tag.is-light {
+   background-color: #1f2937 !important;
+   color: #f3f4f6 !important;
+}
+
+[data-theme="dark"] .has-text-grey-light {
+  color: #6b7280 !important; /* gray-500 */
+}
+
+/* Ensure AI bubbles have readable text in dark mode */
+[data-theme="dark"] .chat-messages .has-background-light {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+  border-color: #374151 !important;
+}
+
 
 /* Premium Glassmorphism and Effects */
 .bg-white-opacity {
@@ -111,6 +144,17 @@
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix bubble text inheritance */
+.chat-messages .rounded-2xl {
+  word-break: break-word;
+}
+
+.chat-messages .has-background-primary.has-text-white * {
+  color: white !important;
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

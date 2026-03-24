@@ -22,7 +22,7 @@ let state = {
   displayOrder: [], // Dictates UI positions (up to 6 visible, others minimized)
   messages: [],
   config: { 
-    responseTimeout: 30,
+    responseTimeout: 300,
     maxRounds: 7,
     maxTurns: 5
   },
@@ -61,8 +61,8 @@ const maxRoundsSlider = document.getElementById('max-rounds-slider');
 const maxRoundsValue = document.getElementById('max-rounds-value');
 const maxDebateTurnsSlider = document.getElementById('max-debate-turns-slider');
 const maxDebateTurnsValue = document.getElementById('max-debate-turns-value');
-const councilModeBtn = document.getElementById('council-mode-btn');
-const debateModeBtn = document.getElementById('debate-mode-btn');
+// const councilModeBtn = document.getElementById('council-mode-btn');
+// const debateModeBtn = document.getElementById('debate-mode-btn');
 
 // --- Helpers ---
 function escHtml(str) { return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -176,17 +176,24 @@ function handleRelayResponse(msg) {
   }
 
   if (responseType === 'ai_response') {
-    if (data.id && data.id.startsWith('wait_')) {
-      state.messages = state.messages.filter(m => m.id !== data.id);
-    }
+    // Remove the waiting placeholder for this member
+    state.messages = state.messages.filter(m => 
+      m.id !== data.id && 
+      !(m.senderType === 'system' && m.sender === data.sender && m.text && m.text.includes('Waiting for'))
+    );
+    
+    // Add the actual response
     if (!state.messages.find(m => m.id === data.id)) {
       state.messages.push(data);
     }
+    
     renderSessions();
+    
+    // Check if we are still waiting for others
     const waiting = state.messages.filter(m => m.senderType === 'system' && m.text && m.text.startsWith('Waiting for'));
     if (waiting.length === 0 && state.status === 'running') {
       state.status = 'idle';
-      sendButton.disabled = false;
+      updateInputState();
     }
   }
 }
@@ -195,7 +202,7 @@ function handleRelayResponse(msg) {
 function render() {
   renderTabs();
   renderSessions();
-  renderModeToggle();
+  // renderModeToggle();
   updateSidebarUI();
   updateTheme();
 }
@@ -254,6 +261,14 @@ function renderTabs() {
 
 function renderSessions() {
   if (!sessionsContainer) return;
+  
+  // Enforce uniqueness and sync
+  state.activeMembers = [...new Set(state.activeMembers)];
+  state.displayOrder = [...new Set(state.displayOrder)].filter(id => state.activeMembers.includes(id));
+  state.activeMembers.forEach(id => {
+    if (!state.displayOrder.includes(id)) state.displayOrder.push(id);
+  });
+
   const activeTabs = state.tabs.filter(t => state.activeMembers.includes(t.id));
   const count = activeTabs.length;
 
@@ -378,8 +393,10 @@ function toggleMember(id) {
 function checkAllReady() {
   const readyTabIds = state.tabs.filter(t => t.connected).map(t => t.id);
   if (readyTabIds.length === 0) return;
-  const allSelected = readyTabIds.every(id => state.activeMembers.includes(id));
-  if (allSelected) {
+  
+  const allReadySelected = readyTabIds.every(id => state.activeMembers.includes(id));
+  
+  if (allReadySelected) {
     state.activeMembers = state.activeMembers.filter(id => !readyTabIds.includes(id));
     state.displayOrder = state.displayOrder.filter(id => !readyTabIds.includes(id));
   } else {
@@ -442,7 +459,7 @@ async function handleSendMessage(e) {
     state.messages.push({ id: waitingId, sender: member.name, senderType: 'system', text: `Waiting for ${member.name}...`, timestamp: Date.now() });
     renderSessions();
 
-    const timeout = state.mode === 'council' ? 0 : state.config.responseTimeout;
+    const timeout = state.config.responseTimeout;
     sendToExtension('ai_command', { memberId, memberName: member.name, message: text, waitingId, responseTimeout: timeout })
       .catch(err => {
         state.messages = state.messages.filter(m => m.id !== waitingId);
@@ -473,11 +490,13 @@ function updateSidebarUI() {
 }
 
 function renderModeToggle() {
+  /*
   councilModeBtn.classList.toggle('is-selected', state.mode === 'council');
   councilModeBtn.classList.toggle('is-primary', state.mode === 'council');
   debateModeBtn.classList.toggle('is-selected', state.mode === 'debate');
   debateModeBtn.classList.toggle('is-primary', state.mode === 'debate');
   debateConfigSection.classList.toggle('is-hidden', state.mode !== 'debate');
+  */
 }
 
 function setExtStatus(online) {
@@ -536,8 +555,8 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAllReadyBtn.onclick = () => checkAllReady();
   clearChatBtn.onclick = () => handleClear();
 
-  councilModeBtn.onclick = () => { state.mode = 'council'; renderModeToggle(); saveState(); };
-  debateModeBtn.onclick = () => { state.mode = 'debate'; renderModeToggle(); saveState(); };
+  // councilModeBtn.onclick = () => { state.mode = 'council'; renderModeToggle(); saveState(); };
+  // debateModeBtn.onclick = () => { state.mode = 'debate'; renderModeToggle(); saveState(); };
 
   responseTimeoutSlider.oninput = (e) => {
     state.config.responseTimeout = parseInt(e.target.value);
@@ -545,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   responseTimeoutSlider.onchange = () => saveState();
 
+  /*
   maxRoundsSlider.oninput = (e) => {
     state.config.maxRounds = parseInt(e.target.value);
     maxRoundsValue.textContent = e.target.value;
@@ -556,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     maxDebateTurnsValue.textContent = e.target.value;
   };
   maxDebateTurnsSlider.onchange = () => saveState();
+  */
 
   chatForm.onsubmit = (e) => handleSendMessage(e);
   chatInput.oninput = () => {
