@@ -72,11 +72,12 @@ function parseMarkdown(text) {
   const blocks = [];
   let html = text.replace(/```([\w]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     const i = blocks.length;
-    const highlighted = Highlighter.highlight(code.trim(), lang);
+    const codeClean = code.trim();
+    const highlighted = Highlighter.highlight(codeClean, lang);
     blocks.push(`<div class="box p-0 mb-4 overflow-hidden" style="border: 1px solid var(--bulma-border);">` +
       `<div class="is-flex is-align-items-center is-justify-content-space-between px-3 py-2 has-background-light" style="border-bottom: 1px solid var(--bulma-border);">` +
       `<span class="is-size-7 font-mono has-text-grey-dark">${escHtml(lang || 'code')}</span>` +
-      `<button class="button is-ghost is-small has-text-primary p-0 h-auto" onclick="navigator.clipboard.writeText(\`${code.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">Copy</button>` +
+      `<button class="button is-ghost is-small has-text-primary p-0 h-auto copy-btn" data-code="${escHtml(codeClean)}">Copy</button>` +
       `</div><pre class="p-4 is-size-7 font-mono overflow-x-auto has-background-white-ter" style="background: var(--bulma-card-background-color) !important;"><code>${highlighted}</code></pre></div>`);
     return `\x00BLOCK${i}\x00`;
   });
@@ -94,7 +95,7 @@ function parseMarkdown(text) {
 
 // --- Extension Bridge ---
 const EXTENSION_ID = 'ihhilpmigmaajhpgmnckcjdfgideidpa';
-const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id === EXTENSION_ID);
+const isExtensionPage = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id);
 let extensionPort = null;
 const pendingCallbacks = new Map();
 
@@ -248,7 +249,7 @@ function renderTabs() {
         </div>
         ${tab.connected 
           ? `<div class="custom-checkbox ${isActive ? 'custom-checkbox-checked' : ''}">${isActive ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : ''}</div>`
-          : `<button class="button is-small is-primary is-outlined is-rounded" onclick="sendToExtension('create_tab', { url: '${tab.homeUrl}' }); event.stopPropagation();">Open</button>`
+          : `<button class="button is-small is-primary is-outlined is-rounded open-btn" data-url="${tab.homeUrl}">Open</button>`
         }
       </div>
     `;
@@ -299,7 +300,7 @@ function renderSessions() {
       mItem.innerHTML = `
         <img src="${tab.iconSrc}" class="image is-16x16">
         <span class="is-size-7 has-text-weight-bold truncate" style="max-width: 80px;">${tab.name}</span>
-        <button class="button is-ghost is-small p-0 h-auto" onclick="expandMember('${id}'); event.stopPropagation();"><i data-lucide="maximize-2" style="width: 12px;"></i></button>
+        <button class="button is-ghost is-small p-0 h-auto expand-btn" data-id="${id}"><i data-lucide="maximize-2" style="width: 12px;"></i></button>
       `;
       mItem.onclick = () => expandMember(id);
       minimizedTray.appendChild(mItem);
@@ -328,8 +329,8 @@ function renderSessions() {
           <span class="is-size-7 has-text-weight-bold">${tab.name}</span>
         </div>
         <div class="buttons">
-          <button class="button is-ghost is-small has-text-grey p-1 h-auto" onclick="minimizeMember('${id}')"><i data-lucide="minus"></i></button>
-          <button class="button is-ghost is-small has-text-danger p-1 h-auto" onclick="toggleMember('${id}')"><i data-lucide="x"></i></button>
+          <button class="button is-ghost is-small has-text-grey p-1 h-auto minimize-btn" data-id="${id}"><i data-lucide="minus"></i></button>
+          <button class="button is-ghost is-small has-text-danger p-1 h-auto close-btn" data-id="${id}"><i data-lucide="x"></i></button>
         </div>
       </div>
       <div class="chat-messages p-4 is-flex-grow-1 is-overflow-y-auto no-scrollbar"></div>
@@ -590,6 +591,51 @@ document.addEventListener('DOMContentLoaded', () => {
       chatForm.requestSubmit();
     }
   };
+
+  // Event delegation for all dynamic buttons (added once in init)
+  function handleDynamicClicks(e) {
+    // Open button in tabs list
+    const openBtn = e.target.closest('.open-btn');
+    if (openBtn) {
+      e.stopPropagation();
+      const url = openBtn.dataset.url;
+      sendToExtension('create_tab', { url });
+      return;
+    }
+    
+    // Expand button in minimized tray
+    const expandBtn = e.target.closest('.expand-btn');
+    if (expandBtn) {
+      expandMember(expandBtn.dataset.id);
+      return;
+    }
+    
+    // Minimize button in session window
+    const minimizeBtn = e.target.closest('.minimize-btn');
+    if (minimizeBtn) {
+      minimizeMember(minimizeBtn.dataset.id);
+      return;
+    }
+    
+    // Close button in session window
+    const closeBtn = e.target.closest('.close-btn');
+    if (closeBtn) {
+      toggleMember(closeBtn.dataset.id);
+      return;
+    }
+    
+    // Copy button in code blocks
+    const copyBtn = e.target.closest('.copy-btn');
+    if (copyBtn) {
+      const code = copyBtn.dataset.code;
+      navigator.clipboard.writeText(code);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+    }
+  }
+
+  // Event delegation for all dynamic elements
+  document.addEventListener('click', handleDynamicClicks);
 
   connectToExtension();
   render();

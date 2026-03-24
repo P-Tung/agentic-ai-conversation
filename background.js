@@ -113,14 +113,13 @@ const PLATFORMS = [
 // =========================================================
 
 function postResponseToWebUI(msg) {
-  if (!webuiPort) return;
   const fwd = {
     target: 'webui',
     responseType: msg.responseType,
     id: msg.id,
     data: msg.data,
   };
-  try { webuiPort.postMessage(fwd); } catch (e) { console.error('[SW] webuiPort send error:', e); }
+  sendToWebUI(fwd);
 }
 
 async function scanTabsRelay() {
@@ -333,14 +332,37 @@ function interactWithAIRelay(platformId, message, selectors, responseTimeout) {
 // Command handler (replaces the side panel relay hop)
 // =========================================================
 
-function handleCommand(msg) {
+function handleCommand(msg, sender, sendResponse) {
   const { id, type, payload } = msg;
+  console.log('[SW] Handling command:', type, 'id:', id);
+  
   if (type === 'scan_tabs') {
-    scanTabsRelay().then(tabs => postResponseToWebUI({ id, responseType: 'tab_scan', data: tabs }));
+    scanTabsRelay().then(tabs => {
+      if (sendResponse) {
+        sendResponse({ target: 'webui', responseType: 'tab_scan', data: tabs, id });
+      } else {
+        postResponseToWebUI({ id, responseType: 'tab_scan', data: tabs });
+      }
+    });
+    return true; // Keep message channel open for async response
   } else if (type === 'ai_command') {
     handleAICommand(id, payload);
+    if (sendResponse) sendResponse({ ok: true });
   } else if (type === 'create_tab') {
-    chrome.tabs.create({ url: payload.url, active: false });
+    chrome.tabs.create({ url: payload.url, active: false }, (newTab) => {
+      // Mark this tab so onUpdated doesn't trigger duplicate scans
+      if (newTab && newTab.id) {
+        recentlyCreatedTabId = newTab.id;
+        // Wait longer before scanning to ensure tab is fully loaded
+        setTimeout(() => {
+          recentlyCreatedTabId = null;
+          scanTabsRelay().then(tabs => {
+            postResponseToWebUI({ id, responseType: 'tab_scan', data: tabs });
+          });
+        }, 3000);
+      }
+    });
+    if (sendResponse) sendResponse({ ok: true });
   }
 }
 
@@ -408,26 +430,56 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 let autoScanTimeout = null;
+let recentlyCreatedTabId = null;
+let lastScanTime = 0;
+
+async function sendToWebUI(msg) {
+  // Try port first
+  if (webuiPort) {
+    try { webuiPort.postMessage(msg); } catch (e) { console.error('[SW] port send error:', e); }
+    return;
+  }
+  
+  // Fallback: find web-ui tab and send directly
+  const tabs = await chrome.tabs.query({ url: chrome.runtime.getURL('web-ui.html') });
+  if (tabs[0]) {
+    chrome.tabs.sendMessage(tabs[0].id, msg, () => {});
+  }
+}
+
 function triggerAutoScan() {
-  if (!webuiPort) return; // Only scan if UI is connected
+  // Debounce - only run once per 500ms
+  const now = Date.now();
+  if (now - lastScanTime < 500) return;
+  lastScanTime = now;
   
   if (autoScanTimeout) clearTimeout(autoScanTimeout);
   
-  // Use a slight timeout to let the browser finalize the tab state and debounce rapid calls
   autoScanTimeout = setTimeout(() => {
     scanTabsRelay().then(tabs => {
-      postResponseToWebUI({ id: 'auto_scan', responseType: 'tab_scan', data: tabs });
+      sendToWebUI({ target: 'webui', id: 'auto_scan', responseType: 'tab_scan', data: tabs });
     });
-  }, 200);
+  }, 500);
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // We care about URL changes or when the page finishes loading
-  if (changeInfo.url || changeInfo.status === 'complete') {
+  // Skip if this is a tab we just created
+  if (tabId === recentlyCreatedTabId) {
+    recentlyCreatedTabId = null;
+    return;
+  }
+  
+  // Only scan when existing AI tabs finish loading (ignore URL changes)
+  if (changeInfo.status === 'complete') {
     triggerAutoScan();
   }
 });
 
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   triggerAutoScan();
+});
+
+// Open web-ui.html in new tab when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('web-ui.html') });
 });
