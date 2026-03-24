@@ -146,7 +146,7 @@
                 </label>
                 <input id="max-length-slider" type="range" min="50" max="2000" step="50" value="50" class="w-full accent-indigo-500">
               </div>
-              <div id="debate-rounds-config">
+              <!-- <div id="debate-rounds-config">
                 <div>
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
                     <span>Max Rounds</span>
@@ -162,16 +162,16 @@
                   <input id="max-debate-turns-slider" type="range" min="1" max="100" step="1" value="5" class="w-full accent-indigo-500">
                   <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">AIs debate for this many turns, then switch to consensus mode.</p>
                 </div>
-              </div>
+              </div> -->
               <div id="response-timeout-section">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between">
                   <span>Response Timeout</span>
-                  <span><span id="response-timeout-value" class="text-indigo-500 font-mono">20</span><span class="text-gray-400 dark:text-gray-500">s</span></span>
+                  <span><span id="response-timeout-value" class="text-indigo-500 font-mono">300</span><span class="text-gray-400 dark:text-gray-500">s</span></span>
                 </label>
-                <input id="response-timeout-slider" type="range" min="5" max="120" step="5" value="20" class="w-full accent-indigo-500">
+                <input id="response-timeout-slider" type="range" min="10" max="600" step="10" value="300" class="w-full accent-indigo-500">
                 <p class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">Max seconds to wait for each AI response before timing out.</p>
               </div>
-              <div id="debate-config-section" class="hidden space-y-4">
+              <!-- <div id="debate-config-section" class="hidden space-y-4">
                 <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
                   <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Debate Settings</p>
                 </div>
@@ -183,7 +183,7 @@
                   <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Consensus Instruction</label>
                   <textarea id="consensus-instruction" class="w-full text-sm p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none h-24 transition-shadow" placeholder="Instructions for consensus phase..."></textarea>
                 </div>
-              </div>
+              </div> -->
             </div>
           </section>
         </div>
@@ -200,7 +200,7 @@
             </button>
             
             <!-- Mode Toggle -->
-            <div id="mode-toggle"></div>
+            <!-- <div id="mode-toggle"></div> -->
             
             <!-- Controls -->
             <div id="controls-container" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">

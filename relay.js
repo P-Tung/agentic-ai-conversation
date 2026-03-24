@@ -50,7 +50,7 @@ async function handleAICommand(id, { memberId, memberName, message, waitingId, r
       id, 
       responseType: 'ai_response', 
       data: { 
-        id: `msg_${Date.now()}`, 
+        id: waitingId || `msg_${Date.now()}`, 
         sender: memberName, 
         senderType: 'ai', 
         text: responseText, 
@@ -59,7 +59,7 @@ async function handleAICommand(id, { memberId, memberName, message, waitingId, r
       } 
     });
   } catch (err) {
-    postResponse({ id, responseType: 'ai_response', data: { id: `msg_err_${Date.now()}`, sender: memberName, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() } });
+    postResponse({ id, responseType: 'ai_response', data: { id: waitingId || `msg_err_${Date.now()}`, sender: memberName, senderType: 'ai', text: `[Error] ${err.message}`, timestamp: Date.now() } });
   }
 }
 
