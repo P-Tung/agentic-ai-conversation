@@ -11,3 +11,10 @@
 .claude
 .mcp.json
 nul
+
+# Playwright test artifacts (may contain session tokens in logs)
+.playwright-cli/
+
+# Test screenshots
+*.test.png
+web-ui-*.png
