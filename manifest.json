@@ -16,7 +16,6 @@
     "*://www.kimi.com/*",
     "*://*.kimi.com/*",
     "*://chat.z.ai/*",
-    "*://agent.minimax.io/*",
     "*://www.genspark.ai/*"
   ],
   "externally_connectable": {
